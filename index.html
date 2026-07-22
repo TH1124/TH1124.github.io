@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<meta name="description" content="無料で遊べるブラウザ用横スクロールアクションゲーム「BLADE QUEST」。3つのステージと個性豊かなボスに挑もう。">
 <style>
   :root{
     --bg:#0a0812;
@@ -143,6 +145,17 @@
 </div>
 
 <div id="app">
+  <header class="site-header" style="border-bottom:none;">
+    <a class="site-title" href="index.html">BLADE QUEST</a>
+    <nav class="site-nav">
+      <a href="index.html" class="active">ホーム</a>
+      <a href="play.html">遊び方</a>
+      <a href="about.html">このサイトについて</a>
+      <a href="contact.html">お問い合わせ</a>
+      <a href="privacy.html">プライバシーポリシー</a>
+    </nav>
+  </header>
+
   <h1>BLADE QUEST</h1>
   <div class="subtitle">剣士の冒険</div>
 
@@ -165,7 +178,25 @@
     移動 <b>← →</b> / <b>A D</b>&nbsp;&nbsp;ジャンプ <b>↑</b> / <b>W</b> / <b>Space</b>&nbsp;&nbsp;攻撃 <b>X</b> / <b>J</b><br>
     スマホは画面下のボタンで操作できます。3つのステージを進み、各ステージ最後のボスを倒そう。
   </div>
+
+  <div style="max-width:640px;text-align:center;margin-top:10px;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「BLADE QUEST -剣士の冒険-」は、忘れられた森・水晶の洞窟・崩れゆく城塞という3つのステージを進む無料の横スクロールアクションゲームです。操作に迷ったら<a href="play.html">遊び方・攻略ガイド</a>もあわせてご覧ください。
+    </p>
+  </div>
 </div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-index"></span> BLADE QUEST
+</footer>
+<script>document.getElementById('year-index').textContent = new Date().getFullYear();</script>
 
 <script>
 (function(){
