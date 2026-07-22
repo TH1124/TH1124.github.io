@@ -1,0 +1,112 @@
+/* ============================================================
+   BLADE QUEST サイト共通スタイル
+   ============================================================ */
+:root{
+  --bg:#0a0812;
+  --panel:#161225;
+  --panel2:#1c1830;
+  --line:#241f3a;
+  --cyan:#4ce0d2;
+  --magenta:#ff4d8d;
+  --gold:#ffd166;
+  --text:#eae6f5;
+  --sub:#9b93b8;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;
+  background:radial-gradient(ellipse at 50% -10%, #201a3a 0%, var(--bg) 55%);
+  color:var(--text);
+  font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  line-height:1.85;
+  font-size:15.5px;
+}
+a{ color:var(--cyan); text-decoration:none; }
+a:hover{ text-decoration:underline; }
+
+.site-header{
+  width:100%;max-width:960px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+  padding:18px 20px;
+  border-bottom:1px solid var(--line);
+}
+.site-title{
+  font-family:'Press Start 2P', monospace;
+  font-size:13px;color:var(--cyan);
+  text-shadow:0 0 10px rgba(76,224,210,0.4);
+  letter-spacing:1px;
+}
+.site-nav{ display:flex; gap:18px; flex-wrap:wrap; }
+.site-nav a{
+  font-size:13.5px;color:var(--sub);font-weight:600;
+  padding:4px 2px;border-bottom:2px solid transparent;
+}
+.site-nav a:hover, .site-nav a.active{
+  color:var(--cyan); text-decoration:none; border-bottom:2px solid var(--cyan);
+}
+
+.site-main{
+  width:100%;max-width:760px;margin:0 auto;
+  padding:36px 22px 70px;
+}
+.site-main h1{
+  font-family:'Press Start 2P', monospace;
+  font-size:19px;line-height:1.7;color:var(--cyan);
+  margin-bottom:22px;
+}
+.site-main h2{
+  font-size:17px;color:var(--text);
+  border-left:4px solid var(--cyan);
+  padding-left:12px;margin:38px 0 14px;
+}
+.site-main h3{
+  font-size:15px;color:var(--gold);margin:22px 0 8px;
+}
+.site-main p{ margin:12px 0; color:#d8d4ea; }
+.site-main ul, .site-main ol{ padding-left:22px; color:#d8d4ea; }
+.site-main li{ margin:6px 0; }
+.lead{
+  font-size:15.5px;color:var(--sub);
+  border-left:3px solid var(--magenta);
+  padding:10px 16px;background:rgba(255,77,141,0.06);
+  border-radius:0 8px 8px 0;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:20px 22px;
+  margin:18px 0;
+}
+.card h3{ margin-top:0; }
+.btn-primary{
+  display:inline-block;
+  background:var(--cyan);color:#04231f;font-weight:700;
+  padding:11px 24px;border-radius:8px;
+  margin-top:14px;
+}
+.btn-primary:hover{ text-decoration:none; filter:brightness(1.08); }
+table.info-table{ width:100%;border-collapse:collapse;margin:14px 0; }
+table.info-table th, table.info-table td{
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);
+  font-size:14px;
+}
+table.info-table th{ color:var(--gold);width:38%; }
+
+.site-footer{
+  width:100%;max-width:960px;margin:0 auto;
+  text-align:center;color:var(--sub);font-size:12px;
+  padding:26px 20px 40px;
+  border-top:1px solid var(--line);
+}
+.site-footer a{ color:var(--sub); }
+.site-footer a:hover{ color:var(--cyan); }
+.footer-links{ margin-bottom:8px; }
+.footer-links a{ margin:0 8px; }
+
+.badge{
+  display:inline-block;font-size:11px;color:var(--bg);
+  background:var(--gold);padding:2px 8px;border-radius:20px;
+  font-weight:700;margin-left:6px;vertical-align:middle;
+}
