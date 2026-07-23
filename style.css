@@ -110,3 +110,66 @@ table.info-table th{ color:var(--gold);width:38%; }
   background:var(--gold);padding:2px 8px;border-radius:20px;
   font-weight:700;margin-left:6px;vertical-align:middle;
 }
+
+.game-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:22px;
+  margin:28px 0 10px;
+}
+.game-card{
+  display:block;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  text-decoration:none;
+  color:inherit;
+  transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.game-card:hover{
+  transform:translateY(-4px);
+  border-color:var(--cyan);
+  text-decoration:none;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+.game-card .thumb{
+  height:130px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Press Start 2P', monospace;
+  font-size:15px;
+  letter-spacing:1px;
+  position:relative;
+  overflow:hidden;
+}
+.game-card .thumb.bq{
+  background:radial-gradient(ellipse at 30% 20%, #1e4a30 0%, #12321f 60%, #0d2419 100%);
+  color:#4ce0d2;
+  text-shadow:0 0 10px rgba(76,224,210,0.6);
+}
+.game-card .thumb.tm{
+  background:radial-gradient(ellipse at 70% 70%, #241d18 0%, #100d16 55%, #050408 100%);
+  color:#e8d98a;
+  text-shadow:0 0 10px rgba(232,217,138,0.5);
+}
+.game-card .thumb .dot{
+  position:absolute;width:6px;height:6px;border-radius:50%;
+  background:currentColor;opacity:0.55;
+}
+.game-card .body{ padding:18px 20px 20px; }
+.game-card .tag{
+  display:inline-block;font-size:10px;color:var(--sub);
+  background:rgba(255,255,255,0.06);padding:3px 9px;border-radius:20px;
+  margin-bottom:10px;
+}
+.game-card h3{ margin:0 0 8px; color:var(--text); font-size:16px; }
+.game-card p{ margin:0; color:var(--sub); font-size:13.5px; line-height:1.75; }
+.game-card .play-link{
+  display:inline-block;margin-top:14px;color:var(--cyan);font-size:13px;font-weight:600;
+}
+.more-soon{
+  border:1px dashed var(--line);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--sub);font-size:13px;min-height:130px;
+  text-align:center;padding:20px;
+}
