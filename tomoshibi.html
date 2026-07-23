@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4115378240812746"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>灯火 -ともしび- THE LAST LIGHT</title>
+<meta name="description" content="無料で遊べるブラウザ用ホラー脱出ゲーム「灯火 -ともしび-」。懐中電灯の光だけを頼りに、何かが潜む屋敷の3つのエリアから脱出しよう。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #game-page{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 14px 30px; }
+  #game-page h1.game-title{
+    font-family:'Press Start 2P', monospace; font-size:clamp(16px,3.4vw,26px);
+    color:#e8d98a; text-shadow:0 0 12px rgba(232,217,138,0.5), 0 3px 0 #2a2210;
+    letter-spacing:2px; margin:10px 0 -6px;
+  }
+  #game-page .game-subtitle{ font-family:'Press Start 2P', monospace; font-size:10px; color:var(--sub); }
+  #game-wrap{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9;
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 0 0 2px #241f1a, 0 0 40px rgba(232,217,138,0.12), 0 20px 50px rgba(0,0,0,0.6);
+    background:#020103;
+  }
+  #tcanvas{ width:100%; height:100%; display:block; }
+  #btn-mute{
+    position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(234,230,245,0.3);background:rgba(10,8,14,0.6);color:var(--text);
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #touch-controls{ position:absolute; inset:0; display:none; pointer-events:none; }
+  .dpad{ position:absolute; left:12px; bottom:12px; width:168px; height:168px; pointer-events:auto; }
+  .dpad button{
+    position:absolute; width:54px; height:54px; border-radius:12px;
+    border:2px solid rgba(234,230,245,0.3); background:rgba(10,8,14,0.55); color:var(--text);
+    font-size:18px; -webkit-tap-highlight-color:transparent;
+  }
+  .dpad button:active{ background:rgba(232,217,138,0.35); }
+  #dp-up{ left:57px; top:0; }
+  #dp-down{ left:57px; top:112px; }
+  #dp-left{ left:0; top:57px; }
+  #dp-right{ left:114px; top:57px; }
+  .action-side{ position:absolute; right:12px; bottom:12px; display:flex; gap:10px; pointer-events:auto; }
+  .action-btn{
+    width:62px;height:62px;border-radius:50%;
+    border:2px solid rgba(232,217,138,0.5); background:rgba(10,8,14,0.55); color:var(--text);
+    font-family:'Press Start 2P', monospace; font-size:11px;
+    display:flex;align-items:center;justify-content:center; -webkit-tap-highlight-color:transparent;
+  }
+  .action-btn:active{ background:rgba(232,217,138,0.35); }
+  @media (pointer:coarse){ #touch-controls{ display:block; } }
+  .hint2{
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif; font-size:12.5px;
+    color:var(--sub); text-align:center; line-height:1.7; max-width:640px;
+  }
+  .hint2 b{ color:#e8d98a; }
+  .rotate-hint2{
+    display:none; position:fixed; inset:0; background:var(--bg); color:var(--text); z-index:50;
+    flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace; font-size:13px; text-align:center; gap:16px; padding:20px;
+  }
+  @media (max-width:760px) and (orientation:portrait){
+    .rotate-hint2{ display:flex; }
+    #game-page{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rotate-hint2">
+  <div>📱 ⟳</div>
+  <div>端末を横向きにしてください</div>
+  <div style="font-size:9px;color:#9b93b8;">ROTATE YOUR DEVICE</div>
+</div>
+
+<header class="site-header">
+  <a class="site-title" href="index.html">BLADE QUEST</a>
+  <nav class="site-nav">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="tomoshibi.html" class="active">灯火(ホラー新作)</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </nav>
+</header>
+
+<div id="game-page">
+  <h1 class="game-title">灯火</h1>
+  <div class="game-subtitle">- THE LAST LIGHT -</div>
+
+  <div id="game-wrap">
+    <canvas id="tcanvas" width="960" height="540"></canvas>
+    <button id="btn-mute" title="音を消す/戻す">🔊</button>
+    <div id="touch-controls">
+      <div class="dpad">
+        <button id="dp-up">▲</button>
+        <button id="dp-down">▼</button>
+        <button id="dp-left">◀</button>
+        <button id="dp-right">▶</button>
+      </div>
+      <div class="action-side">
+        <button id="btn-light" class="action-btn">灯</button>
+        <button id="btn-breath" class="action-btn">潜</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint2">
+    移動 <b>矢印 / WASD</b>&nbsp;&nbsp;懐中電灯 <b>F</b>&nbsp;&nbsp;息を潜める <b>Shift(長押し)</b><br>
+    懐中電灯の光は敵に見つかりやすくなります。バッテリーは有限、使いどころを見極めて。3つのエリアを抜けて屋敷から脱出しよう。
+  </div>
+
+  <div style="max-width:640px;text-align:center;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「灯火 -ともしび-」は、鍵を探して屋敷から脱出する見下ろし型ホラー探索ゲームです。アクションゲーム「BLADE QUEST」の<a href="index.html">こちら</a>もあわせてどうぞ。
+    </p>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="tomoshibi.html">灯火(ホラー新作)</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-t"></span> BLADE QUEST
+</footer>
+<script>document.getElementById('year-t').textContent = new Date().getFullYear();</script>
+
+<script>
+(function(){
+"use strict";
+
+// ============================================================
+// 基本設定
+// ============================================================
+const canvas = document.getElementById('tcanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const TILE = 104;
+const WALL_T = 16;
+const CELLS_X = 11, CELLS_Y = 8;
+const WORLD_W = CELLS_X*TILE, WORLD_H = CELLS_Y*TILE;
+
+const PLAYER_SPEED = 2.7;
+const BREATH_SPEED = 1.3;
+const CATCH_RADIUS = 30;
+const NEAR_RADIUS = 50;
+const CONE_RADIUS_ON = 230;
+const CONE_HALF_ANGLE = 0.58;
+const BATTERY_DRAIN_PER_SEC = 4.5;
+const BATTERY_PICKUP = 32;
+const EYE_RANGE = 360;
+
+const DETECTION = {
+  balanced:{ lightOn:260, darkMove:100, darkStill:40 },
+  blind:{ lightOn:320, darkMove:58, darkStill:20 }
+};
+const SPEEDS = { balanced:2.0, blind:1.9, climax:2.35 };
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rr(x,y,w,h,r){
+  if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function rectsOverlap(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+// ============================================================
+// 章(チャプター)定義
+// ============================================================
+const CHAPTERS = [
+  {
+    key:'floor1', name:'第1章 1階 玄関ホール', mode:'balanced',
+    floorColor:'#1c1712', wallColor:'#3a2e22', entityTint:'#241d18', eyeColor:'#e8d98a',
+    notes:[
+      'この家に越してきてから、夜になると廊下から足音が聞こえる。子供は皆出て行った。物音の主に心当たりはない。',
+      '郵便受けに届いた手紙には差出人の名前がなかった。ただ一言、「灯りを消すな」とだけ書かれていた。',
+      '母が言っていた。「この家には、まだ誰かがいる」と。母はもうこの家にはいない。'
+    ]
+  },
+  {
+    key:'basement', name:'第2章 地下貯蔵庫', mode:'blind',
+    floorColor:'#12151a', wallColor:'#262b33', entityTint:'#0d1014', eyeColor:'#8fd6ff',
+    notes:[
+      '地下室の鍵は祖父の代から誰も持ち出したことがない。理由を聞くと、皆口をつぐんだ。',
+      '貯蔵庫の奥の壁に、爪で引っかいたような跡がある。内側からのものだった。',
+      '光を嫌う、と祖父の日記にはあった。だから懐中電灯は消して歩け、と。'
+    ]
+  },
+  {
+    key:'attic', name:'第3章 屋根裏部屋', mode:'climax',
+    floorColor:'#1a1512', wallColor:'#33271f', entityTint:'#241010', eyeColor:'#ff5c4d',
+    notes:[
+      '屋根裏には誰も上げなかった。子供の頃、一度だけ覗いた天井裏の暗闇を今でも覚えている。',
+      '最後の鍵は屋根裏にあるという。だが、それを取りに行った者は誰も戻ってこなかった。',
+      'もし目を覚まさせてしまったら、走れ。振り返らずに、光の方へ。'
+    ]
+  }
+];
+
+// ============================================================
+// グローバル状態
+// ============================================================
+let state = 'TITLE'; // TITLE, INTRO, PLAYING, CHAPTERCLEAR, ENDING
+let chapterIdx = 0;
+let chapterCfg = null;
+let maze = null;
+let solids = [];
+let player = null;
+let entity = null;
+let keysArr = [], batteriesArr = [], notesArr = [];
+let exitPos = null;
+let camera = { x:0, y:0 };
+
+let introTimer = 0;
+let chapterClearTimer = 0;
+let scareTimer = 0;
+let noteText = null;
+let toastText = '';
+let toastTimer = 0;
+
+let totalNotesFound = 0;
+let totalCatches = 0;
+let runStartTime = 0;
+
+let keyState = { left:false, right:false, up:false, down:false, breath:false };
+let touchState = { left:false, right:false, up:false, down:false, breath:false };
+let lightToggleQueued = false;
+
+let bgParticles = [];
+for (let i=0;i<40;i++){
+  bgParticles.push({
+    x: Math.random()*W, y: Math.random()*H,
+    vy: -(0.1+Math.random()*0.25),
+    r: 0.8+Math.random()*1.6,
+    a: 0.1+Math.random()*0.4
+  });
+}
+
+// ============================================================
+// 迷路生成(棒倒し法/再帰的バックトラッカー)
+// ============================================================
+function buildMaze(cx,cy){
+  const cells=[];
+  for(let y=0;y<cy;y++){
+    const row=[];
+    for(let x=0;x<cx;x++) row.push({x,y,n:false,s:false,e:false,w:false,visited:false});
+    cells.push(row);
+  }
+  function neighborsUnvisited(cell){
+    const list=[];
+    const {x,y}=cell;
+    if(y>0 && !cells[y-1][x].visited) list.push({dir:'n',cell:cells[y-1][x]});
+    if(y<cy-1 && !cells[y+1][x].visited) list.push({dir:'s',cell:cells[y+1][x]});
+    if(x>0 && !cells[y][x-1].visited) list.push({dir:'w',cell:cells[y][x-1]});
+    if(x<cx-1 && !cells[y][x+1].visited) list.push({dir:'e',cell:cells[y][x+1]});
+    return list;
+  }
+  const opposite = {n:'s',s:'n',e:'w',w:'e'};
+  const start = cells[0][0];
+  start.visited = true;
+  const stack=[start];
+  while(stack.length){
+    const cur = stack[stack.length-1];
+    const opts = neighborsUnvisited(cur);
+    if(opts.length===0){ stack.pop(); continue; }
+    const pick = opts[Math.floor(Math.random()*opts.length)];
+    cur[pick.dir]=true;
+    pick.cell[opposite[pick.dir]]=true;
+    pick.cell.visited=true;
+    stack.push(pick.cell);
+  }
+  return cells;
+}
+
+function deriveWalls(mz){
+  const walls=[];
+  for(let y=0;y<CELLS_Y;y++){
+    for(let x=0;x<CELLS_X;x++){
+      const c=mz[y][x];
+      if(y===0 || !c.n) walls.push({x:x*TILE, y:y*TILE-WALL_T/2, w:TILE, h:WALL_T});
+      if(x===0 || !c.w) walls.push({x:x*TILE-WALL_T/2, y:y*TILE, w:WALL_T, h:TILE});
+      if(x===CELLS_X-1) walls.push({x:(x+1)*TILE-WALL_T/2, y:y*TILE, w:WALL_T, h:TILE});
+      if(y===CELLS_Y-1) walls.push({x:x*TILE, y:(y+1)*TILE-WALL_T/2, w:TILE, h:WALL_T});
+    }
+  }
+  return walls;
+}
+
+function bfsDistances(mz,sx,sy){
+  const dst = Array.from({length:CELLS_Y},()=>new Array(CELLS_X).fill(-1));
+  dst[sy][sx]=0;
+  const q=[[sx,sy]]; let qi=0;
+  while(qi<q.length){
+    const [x,y]=q[qi++];
+    const c=mz[y][x]; const d=dst[y][x];
+    if(c.n && dst[y-1][x]===-1){ dst[y-1][x]=d+1; q.push([x,y-1]); }
+    if(c.s && dst[y+1][x]===-1){ dst[y+1][x]=d+1; q.push([x,y+1]); }
+    if(c.e && dst[y][x+1]===-1){ dst[y][x+1]=d+1; q.push([x+1,y]); }
+    if(c.w && dst[y][x-1]===-1){ dst[y][x-1]=d+1; q.push([x-1,y]); }
+  }
+  return dst;
+}
+
+function bfsPath(mz,sx,sy,tx,ty){
+  const key=(x,y)=>x+','+y;
+  const prev={};
+  const visited=new Set([key(sx,sy)]);
+  const q=[[sx,sy]]; let qi=0;
+  while(qi<q.length){
+    const [x,y]=q[qi++];
+    if(x===tx&&y===ty) break;
+    const c=mz[y][x];
+    const nbs=[];
+    if(c.n) nbs.push([x,y-1]);
+    if(c.s) nbs.push([x,y+1]);
+    if(c.e) nbs.push([x+1,y]);
+    if(c.w) nbs.push([x-1,y]);
+    for(const [nx,ny] of nbs){
+      const k=key(nx,ny);
+      if(!visited.has(k)){ visited.add(k); prev[k]=[x,y]; q.push([nx,ny]); }
+    }
+  }
+  const path=[];
+  if(!visited.has(key(tx,ty))) return path;
+  let cx=tx, cy=ty;
+  while(!(cx===sx&&cy===sy)){
+    path.push([cx,cy]);
+    const p=prev[key(cx,cy)];
+    if(!p) break;
+    cx=p[0]; cy=p[1];
+  }
+  path.reverse();
+  return path;
+}
+
+function cellCenterOf(x,y){ return { x:(x+0.5)*TILE, y:(y+0.5)*TILE }; }
+function cellOf(wx,wy){
+  return {
+    x: clamp(Math.floor(wx/TILE),0,CELLS_X-1),
+    y: clamp(Math.floor(wy/TILE),0,CELLS_Y-1)
+  };
+}
+
+// ============================================================
+// 章のロード
+// ============================================================
+function loadChapter(idx){
+  chapterIdx = idx;
+  chapterCfg = CHAPTERS[idx];
+  maze = buildMaze(CELLS_X,CELLS_Y);
+  solids = deriveWalls(maze);
+
+  const dst = bfsDistances(maze,0,0);
+  const allCells=[];
+  let maxD=0, exitCell=[CELLS_X-1,CELLS_Y-1];
+  for(let y=0;y<CELLS_Y;y++) for(let x=0;x<CELLS_X;x++){
+    allCells.push([x,y,dst[y][x]]);
+    if(dst[y][x]>maxD){ maxD=dst[y][x]; exitCell=[x,y]; }
+  }
+
+  const used = new Set(['0,0', exitCell[0]+','+exitCell[1]]);
+  function pickAndMark(cands){
+    const pool = cands.length ? cands : allCells.filter(c=>!used.has(c[0]+','+c[1]));
+    const c = pickRandom(pool);
+    used.add(c[0]+','+c[1]);
+    return c;
+  }
+
+  const keyCandidates = allCells.filter(([x,y,d])=> d>=maxD*0.5 && !used.has(x+','+y));
+  const keyCell = pickAndMark(keyCandidates);
+
+  const batteries=[];
+  for(let i=0;i<3;i++){
+    const cands = allCells.filter(([x,y,d])=> d>=2 && !used.has(x+','+y));
+    batteries.push(pickAndMark(cands));
+  }
+  const noteCells=[];
+  for(let i=0;i<3;i++){
+    const cands = allCells.filter(([x,y])=> !used.has(x+','+y));
+    noteCells.push(pickAndMark(cands));
+  }
+
+  let monsterCell;
+  if(chapterCfg.mode==='climax'){
+    monsterCell = keyCell;
+  } else {
+    const cands = allCells.filter(([x,y,d])=>
+      d>=maxD*0.3 && d<=maxD*0.75 && !(x===keyCell[0]&&y===keyCell[1]) && !(x===0&&y===0));
+    monsterCell = cands.length ? pickRandom(cands) : pickRandom(allCells);
+  }
+
+  const startPos = cellCenterOf(0,0);
+  player = {
+    x:startPos.x, y:startPos.y, vx:0, vy:0, facingAngle:0,
+    battery:100, lightOn:true, holdingBreath:false, hasKey:false, invulnTimer:0
+  };
+
+  const kc = cellCenterOf(keyCell[0],keyCell[1]);
+  keysArr = [{ x:kc.x, y:kc.y, collected:false }];
+  batteriesArr = batteries.map(c=>{ const p=cellCenterOf(c[0],c[1]); return {x:p.x,y:p.y,collected:false}; });
+  notesArr = noteCells.map((c,i)=>{ const p=cellCenterOf(c[0],c[1]); return {x:p.x,y:p.y,read:false,text:chapterCfg.notes[i]}; });
+
+  const ep = cellCenterOf(exitCell[0],exitCell[1]);
+  exitPos = { x:ep.x, y:ep.y };
+
+  const mp = cellCenterOf(monsterCell[0],monsterCell[1]);
+  entity = {
+    x:mp.x, y:mp.y, spawnX:mp.x, spawnY:mp.y,
+    state: chapterCfg.mode==='climax' ? 'dormant' : 'patrol',
+    path:[], pathTimer:0, wanderTimer:0, loseTimer:0,
+    lastKnown:{x:mp.x,y:mp.y}, awakened:false
+  };
+
+  camera.x=0; camera.y=0;
+  toastText=''; toastTimer=0; noteText=null; scareTimer=0;
+  state='INTRO'; introTimer=1800;
+}
+
+function startGame(){
+  resumeAudio();
+  totalNotesFound=0; totalCatches=0; runStartTime=performance.now();
+  loadChapter(0);
+  startAmbient();
+  heartbeatActive=true;
+  scheduleHeartbeat();
+}
+
+function advanceChapter(){
+  if(chapterIdx+1<CHAPTERS.length){
+    loadChapter(chapterIdx+1);
+  } else {
+    state='ENDING';
+    stopAmbient();
+    heartbeatActive=false;
+    playEndingJingle();
+  }
+}
+
+// ============================================================
+// プレイヤー移動 & 衝突
+// ============================================================
+function moveAndCollideX(dt){
+  player.x += player.vx*dt;
+  const box={x:player.x-12,y:player.y-12,w:24,h:24};
+  for(const s of solids){
+    if(rectsOverlap(box,s)){
+      if(player.vx>0) player.x = s.x-12;
+      else if(player.vx<0) player.x = s.x+s.w+12;
+      box.x = player.x-12;
+    }
+  }
+}
+function moveAndCollideY(dt){
+  player.y += player.vy*dt;
+  const box={x:player.x-12,y:player.y-12,w:24,h:24};
+  for(const s of solids){
+    if(rectsOverlap(box,s)){
+      if(player.vy>0) player.y = s.y-12;
+      else if(player.vy<0) player.y = s.y+s.h+12;
+      box.y = player.y-12;
+    }
+  }
+}
+
+function updatePlayerMovement(dt){
+  const left=keyState.left||touchState.left, right=keyState.right||touchState.right;
+  const up=keyState.up||touchState.up, down=keyState.down||touchState.down;
+  const breath = keyState.breath||touchState.breath;
+  player.holdingBreath = breath;
+
+  let vx=(right?1:0)-(left?1:0);
+  let vy=(down?1:0)-(up?1:0);
+  if(vx!==0 && vy!==0){ vx*=0.7071; vy*=0.7071; }
+  const speed = breath?BREATH_SPEED:PLAYER_SPEED;
+  player.vx = vx*speed; player.vy = vy*speed;
+  if(vx!==0||vy!==0) player.facingAngle = Math.atan2(vy,vx);
+
+  if(lightToggleQueued){
+    if(player.battery>0) player.lightOn = !player.lightOn;
+    else player.lightOn = false;
+    lightToggleQueued=false;
+    playToggleSound();
+  }
+  if(player.lightOn){
+    player.battery -= (BATTERY_DRAIN_PER_SEC/60)*dt;
+    if(player.battery<=0){ player.battery=0; player.lightOn=false; }
+  }
+
+  moveAndCollideX(dt);
+  moveAndCollideY(dt);
+  player.x = clamp(player.x, 12, WORLD_W-12);
+  player.y = clamp(player.y, 12, WORLD_H-12);
+}
+
+// ============================================================
+// アイテム & 出口判定
+// ============================================================
+function toast(t){ toastText=t; toastTimer=1800; }
+
+function updateItemsPickup(){
+  for(const k of keysArr){
+    if(!k.collected && dist(player,k)<26){
+      k.collected=true; player.hasKey=true;
+      playKeySound(); toast('鍵を手に入れた');
+      if(chapterCfg.mode==='climax') awakenEntity();
+    }
+  }
+  for(const b of batteriesArr){
+    if(!b.collected && dist(player,b)<24){
+      b.collected=true;
+      player.battery = Math.min(100, player.battery+BATTERY_PICKUP);
+      playPickupSound();
+    }
+  }
+  for(const n of notesArr){
+    if(!n.read && dist(player,n)<24){
+      n.read=true; noteText=n.text; totalNotesFound++;
+      playNoteSound();
+    }
+  }
+}
+
+function awakenEntity(){
+  entity.awakened=true; entity.state='hunting';
+  entity.lastKnown={x:player.x,y:player.y};
+  playAwakenSting();
+}
+
+function updateExitCheck(){
+  if(dist(player,exitPos)<30){
+    if(player.hasKey){
+      if(state==='PLAYING'){
+        state='CHAPTERCLEAR'; chapterClearTimer=2200;
+        playChapterClearJingle();
+      }
+    } else if(toastTimer<=0){
+      toast('鍵が必要だ…');
+    }
+  }
+}
+
+// ============================================================
+// 追跡者AI
+// ============================================================
+function hasLineOfSight(x1,y1,x2,y2){
+  const steps=14;
+  for(let i=1;i<steps;i++){
+    const t=i/steps;
+    const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t;
+    for(let j=0;j<solids.length;j++){
+      const s=solids[j];
+      if(px>s.x && px<s.x+s.w && py>s.y && py<s.y+s.h) return false;
+    }
+  }
+  return true;
+}
+
+function moveAlongPath(ent,dt,speed){
+  if(!ent.path || ent.path.length===0) return;
+  const [tx,ty]=ent.path[0];
+  const target=cellCenterOf(tx,ty);
+  const dx=target.x-ent.x, dy=target.y-ent.y;
+  const d=Math.hypot(dx,dy);
+  if(d<4){ ent.path.shift(); return; }
+  ent.x += (dx/d)*speed*dt;
+  ent.y += (dy/d)*speed*dt;
+}
+
+function updateEntityAI(dt){
+  const dtMs = dt*16.6667;
+  const ec = cellOf(entity.x,entity.y);
+
+  if(chapterCfg.mode==='climax'){
+    if(!entity.awakened) return;
+    entity.lastKnown={x:player.x,y:player.y};
+    entity.pathTimer -= dtMs;
+    if(entity.pathTimer<=0){
+      const pc=cellOf(player.x,player.y);
+      entity.path=bfsPath(maze,ec.x,ec.y,pc.x,pc.y);
+      entity.pathTimer=420;
+    }
+    moveAlongPath(entity,dt,SPEEDS.climax);
+    return;
+  }
+
+  const dx=player.x-entity.x, dy=player.y-entity.y;
+  const d2p=Math.hypot(dx,dy);
+  const params=DETECTION[chapterCfg.mode];
+  let radius;
+  if(player.lightOn) radius=params.lightOn;
+  else if(player.holdingBreath) radius=params.darkStill;
+  else radius=params.darkMove;
+
+  let detected=false;
+  if(d2p<radius && hasLineOfSight(entity.x,entity.y,player.x,player.y)) detected=true;
+
+  if(detected){
+    entity.state='hunting';
+    entity.loseTimer=4000;
+    entity.lastKnown={x:player.x,y:player.y};
+  } else if(entity.state==='hunting'){
+    entity.loseTimer -= dtMs;
+    if(entity.loseTimer<=0){ entity.state='patrol'; entity.path=[]; }
+  }
+
+  if(entity.state==='hunting'){
+    entity.pathTimer -= dtMs;
+    if(entity.pathTimer<=0){
+      const tc=cellOf(entity.lastKnown.x, entity.lastKnown.y);
+      entity.path=bfsPath(maze,ec.x,ec.y,tc.x,tc.y);
+      entity.pathTimer=450;
+    }
+    moveAlongPath(entity,dt,SPEEDS[chapterCfg.mode]);
+  } else {
+    entity.wanderTimer -= dtMs;
+    if(entity.wanderTimer<=0 || entity.path.length===0){
+      const c=maze[ec.y][ec.x];
+      const nbs=[];
+      if(c.n) nbs.push([ec.x,ec.y-1]);
+      if(c.s) nbs.push([ec.x,ec.y+1]);
+      if(c.e) nbs.push([ec.x+1,ec.y]);
+      if(c.w) nbs.push([ec.x-1,ec.y]);
+      if(nbs.length) entity.path=[pickRandom(nbs)];
+      entity.wanderTimer=2200+Math.random()*1400;
+    }
+    moveAlongPath(entity,dt,SPEEDS[chapterCfg.mode]*0.55);
+  }
+}
+
+function checkCatch(){
+  if(player.invulnTimer>0 || scareTimer>0) return;
+  if(chapterCfg.mode==='climax' && !entity.awakened) return;
+  if(Math.hypot(player.x-entity.x, player.y-entity.y) < CATCH_RADIUS) triggerJumpscare();
+}
+
+function triggerJumpscare(){
+  scareTimer=1200;
+  totalCatches++;
+  playScareSting();
+  const sp=cellCenterOf(0,0);
+  player.x=sp.x; player.y=sp.y; player.vx=0; player.vy=0;
+  player.invulnTimer=1700;
+  if(chapterCfg.mode==='climax'){
+    entity.awakened=false; entity.state='dormant';
+    entity.x=entity.spawnX; entity.y=entity.spawnY; entity.path=[];
+    player.hasKey=false;
+    if(keysArr[0]) keysArr[0].collected=false;
+  } else {
+    entity.state='patrol'; entity.loseTimer=0; entity.path=[];
+    entity.x=entity.spawnX; entity.y=entity.spawnY;
+  }
+}
+
+// ============================================================
+// メイン更新
+// ============================================================
+function updateAtmosphere(dt){
+  for(const p of bgParticles){
+    p.y += p.vy*dt;
+    if(p.y<-10) p.y=H+10;
+  }
+}
+
+function update(dt){
+  if(state==='TITLE'){ updateAtmosphere(dt); return; }
+  if(state==='ENDING'){ return; }
+  if(state==='INTRO'){
+    introTimer -= dt*16.6667;
+    if(introTimer<=0) state='PLAYING';
+    return;
+  }
+  if(state==='CHAPTERCLEAR'){
+    chapterClearTimer -= dt*16.6667;
+    if(chapterClearTimer<=0) advanceChapter();
+    return;
+  }
+  if(scareTimer>0){ scareTimer -= dt*16.6667; return; }
+  if(noteText){ return; }
+
+  updatePlayerMovement(dt);
+  camera.x = clamp(player.x-W/2, 0, Math.max(0, WORLD_W-W));
+  camera.y = clamp(player.y-H/2, 0, Math.max(0, WORLD_H-H));
+  updateItemsPickup();
+  updateExitCheck();
+  updateEntityAI(dt);
+  checkCatch();
+  if(toastTimer>0) toastTimer -= dt*16.6667;
+  if(player.invulnTimer>0) player.invulnTimer -= dt*16.6667;
+}
+
+// ============================================================
+// 描画
+// ============================================================
+function drawFloorAndWalls(){
+  ctx.fillStyle=chapterCfg.floorColor;
+  ctx.fillRect(-camera.x,-camera.y,WORLD_W,WORLD_H);
+  ctx.fillStyle=chapterCfg.wallColor;
+  for(const s of solids){
+    const sx=s.x-camera.x, sy=s.y-camera.y;
+    if(sx+s.w<0||sx>W||sy+s.h<0||sy>H) continue;
+    ctx.fillRect(sx,sy,s.w,s.h);
+  }
+}
+
+function drawKeyIcon(x,y){
+  const t=performance.now()/300;
+  const glow=ctx.createRadialGradient(x,y,0,x,y,26);
+  glow.addColorStop(0,'rgba(255,209,102,0.35)'); glow.addColorStop(1,'rgba(255,209,102,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x,y,26,0,Math.PI*2); ctx.fill();
+  ctx.save();
+  ctx.translate(x,y+Math.sin(t)*3);
+  ctx.fillStyle='#ffd166';
+  ctx.beginPath(); ctx.arc(-6,0,6,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(-2,-2,14,4);
+  ctx.fillRect(8,-2,3,6);
+  ctx.fillRect(4,2,3,5);
+  ctx.restore();
+}
+function drawBatteryIcon(x,y){
+  const glow=ctx.createRadialGradient(x,y,0,x,y,22);
+  glow.addColorStop(0,'rgba(140,255,180,0.3)'); glow.addColorStop(1,'rgba(140,255,180,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8cffb4';
+  ctx.fillRect(x-8,y-12,16,24);
+  ctx.fillRect(x-4,y-16,8,4);
+  ctx.fillStyle='#14231a';
+  ctx.fillRect(x-8,y-4,16,3);
+  ctx.fillRect(x-8,y+2,16,3);
+}
+function drawNoteIcon(x,y){
+  const glow=ctx.createRadialGradient(x,y,0,x,y,20);
+  glow.addColorStop(0,'rgba(255,255,255,0.22)'); glow.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x,y,20,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e9e4d8';
+  ctx.beginPath();
+  ctx.moveTo(x-9,y-11); ctx.lineTo(x+5,y-11); ctx.lineTo(x+9,y-7); ctx.lineTo(x+9,y+11); ctx.lineTo(x-9,y+11);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#c9c2ae';
+  ctx.beginPath(); ctx.moveTo(x+5,y-11); ctx.lineTo(x+5,y-7); ctx.lineTo(x+9,y-7); ctx.closePath(); ctx.fill();
+}
+function drawExitDoor(x,y,unlocked){
+  if(unlocked){
+    const glow=ctx.createRadialGradient(x,y,0,x,y,55);
+    glow.addColorStop(0,'rgba(255,209,102,0.32)'); glow.addColorStop(1,'rgba(255,209,102,0)');
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x,y,55,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle = unlocked? '#3a2b12' : '#241a12';
+  ctx.fillRect(x-22,y-32,44,64);
+  ctx.fillStyle = unlocked? '#ffd166' : '#5a4028';
+  ctx.fillRect(x-16,y-26,32,52);
+}
+
+function drawItems(){
+  for(const k of keysArr) if(!k.collected) drawKeyIcon(k.x-camera.x, k.y-camera.y);
+  for(const b of batteriesArr) if(!b.collected) drawBatteryIcon(b.x-camera.x, b.y-camera.y);
+  for(const n of notesArr) if(!n.read) drawNoteIcon(n.x-camera.x, n.y-camera.y);
+  drawExitDoor(exitPos.x-camera.x, exitPos.y-camera.y, player.hasKey);
+}
+
+function drawEntityBody(){
+  if(chapterCfg.mode==='climax' && !entity.awakened) return;
+  const x=entity.x-camera.x, y=entity.y-camera.y;
+  if(x<-60||x>W+60||y<-60||y>H+60) return;
+  ctx.fillStyle=chapterCfg.entityTint;
+  ctx.beginPath();
+  ctx.moveTo(x, y-20);
+  ctx.quadraticCurveTo(x+16,y-14, x+14,y+4);
+  ctx.quadraticCurveTo(x+10,y+20, x, y+22);
+  ctx.quadraticCurveTo(x-10,y+20, x-14,y+4);
+  ctx.quadraticCurveTo(x-16,y-14, x, y-20);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawPlayer(){
+  const x=player.x-camera.x, y=player.y-camera.y;
+  if(player.invulnTimer>0 && Math.floor(performance.now()/90)%2===0) return;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(player.facingAngle);
+  ctx.fillStyle='#dfe6ee';
+  ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = player.lightOn ? '#fff3c4' : '#555c66';
+  ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(18,-5); ctx.lineTo(18,5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+let maskCanvas=null, maskCtx=null;
+function ensureMaskCanvas(){
+  if(maskCanvas) return;
+  maskCanvas=document.createElement('canvas');
+  maskCanvas.width=W; maskCanvas.height=H;
+  maskCtx=maskCanvas.getContext('2d');
+}
+function applyLightingMask(){
+  ensureMaskCanvas();
+  maskCtx.globalCompositeOperation='source-over';
+  maskCtx.fillStyle='rgba(4,3,6,0.94)';
+  maskCtx.fillRect(0,0,W,H);
+  maskCtx.globalCompositeOperation='destination-out';
+
+  const px=player.x-camera.x, py=player.y-camera.y;
+
+  const nearGrad=maskCtx.createRadialGradient(px,py,0,px,py,NEAR_RADIUS);
+  nearGrad.addColorStop(0,'rgba(255,255,255,1)');
+  nearGrad.addColorStop(1,'rgba(255,255,255,0)');
+  maskCtx.fillStyle=nearGrad;
+  maskCtx.beginPath(); maskCtx.arc(px,py,NEAR_RADIUS,0,Math.PI*2); maskCtx.fill();
+
+  if(player.lightOn){
+    const coneGrad=maskCtx.createRadialGradient(px,py,0,px,py,CONE_RADIUS_ON);
+    coneGrad.addColorStop(0,'rgba(255,255,255,1)');
+    coneGrad.addColorStop(0.7,'rgba(255,255,255,0.85)');
+    coneGrad.addColorStop(1,'rgba(255,255,255,0)');
+    maskCtx.fillStyle=coneGrad;
+    maskCtx.beginPath();
+    maskCtx.moveTo(px,py);
+    maskCtx.arc(px,py,CONE_RADIUS_ON, player.facingAngle-CONE_HALF_ANGLE, player.facingAngle+CONE_HALF_ANGLE);
+    maskCtx.closePath();
+    maskCtx.fill();
+  }
+
+  maskCtx.globalCompositeOperation='source-over';
+  ctx.drawImage(maskCanvas,0,0);
+}
+
+function drawEntityEyes(){
+  if(chapterCfg.mode==='climax' && !entity.awakened) return;
+  const d=Math.hypot(player.x-entity.x, player.y-entity.y);
+  if(d>EYE_RANGE) return;
+  const x=entity.x-camera.x, y=entity.y-camera.y;
+  const alpha=Math.max(0.15, Math.min(1,1-d/EYE_RANGE));
+  ctx.globalAlpha=alpha;
+  ctx.fillStyle=chapterCfg.eyeColor;
+  ctx.beginPath(); ctx.arc(x-5,y-8,2.8,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+5,y-8,2.8,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  const bx=20,by=20,bw=90,bh=14;
+  ctx.fillStyle='rgba(10,8,14,0.6)'; rr(bx-4,by-4,bw+8,bh+8,6); ctx.fill();
+  ctx.fillStyle='#2a2f38'; ctx.fillRect(bx,by,bw,bh);
+  const pct=player.battery/100;
+  ctx.fillStyle = pct>0.3 ? '#8cffb4' : '#ff6b6b';
+  ctx.fillRect(bx,by,bw*pct,bh);
+  ctx.font="9px 'Press Start 2P', monospace";
+  ctx.fillStyle='#cfd6e0';
+  ctx.fillText('BATT', bx, by-6);
+
+  ctx.globalAlpha = player.hasKey ? 1 : 0.25;
+  drawKeyIcon(bx+bw+26, by+7);
+  ctx.globalAlpha = 1;
+
+  ctx.font="9px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(234,230,245,0.55)';
+  ctx.textAlign='right';
+  ctx.fillText((chapterIdx+1)+' / '+CHAPTERS.length, W-16, 24);
+  ctx.textAlign='left';
+}
+
+function centerText(text,y,size,color){
+  ctx.font=size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=color;
+  ctx.textAlign='center';
+  ctx.fillText(text, W/2, y);
+  ctx.textAlign='left';
+}
+
+function drawDust(){
+  for(const p of bgParticles){
+    ctx.globalAlpha=p.a;
+    ctx.fillStyle='#cfd6e0';
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawTitleScreen(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#100d16'); g.addColorStop(1,'#050408');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('灯火', H*0.32, 30, '#e8d98a');
+  centerText('- THE LAST LIGHT -', H*0.32+30, 11, '#9b93b8');
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP', H*0.62, 12, '#ffd166');
+  ctx.restore();
+  centerText('灯りを頼りに、3つのエリアから逃げ出せ', H*0.72, 10, '#9b93b8');
+  centerText('移動 矢印/WASD　灯り F　息を潜める Shift', H*0.78, 9, '#9b93b8');
+}
+
+function drawIntroOverlay(){
+  ctx.fillStyle='rgba(3,2,5,0.6)'; ctx.fillRect(0,0,W,H);
+  const a=Math.min(1,(1800-introTimer)/300);
+  ctx.globalAlpha=a;
+  centerText(chapterCfg.name, H/2, 18, '#e8d98a');
+  ctx.globalAlpha=1;
+}
+
+function wrapText(text,x,y,maxW,lh){
+  let line='', yy=y;
+  for(const ch of text){
+    const test=line+ch;
+    if(ctx.measureText(test).width>maxW){ ctx.fillText(line,x,yy); line=ch; yy+=lh; }
+    else line=test;
+  }
+  ctx.fillText(line,x,yy);
+}
+
+function drawNoteOverlay(){
+  ctx.fillStyle='rgba(3,2,5,0.75)'; ctx.fillRect(0,0,W,H);
+  const bw=580,bh=220,bx=(W-bw)/2,by=(H-bh)/2;
+  ctx.fillStyle='#171320'; rr(bx,by,bw,bh,10); ctx.fill();
+  ctx.strokeStyle='rgba(234,230,245,0.2)'; ctx.lineWidth=1; rr(bx,by,bw,bh,10); ctx.stroke();
+  ctx.font="13px system-ui, sans-serif"; ctx.fillStyle='#eae6f5';
+  wrapText(noteText, bx+26, by+40, bw-52, 22);
+  ctx.font="9px 'Press Start 2P', monospace"; ctx.fillStyle='#9b93b8'; ctx.textAlign='center';
+  ctx.fillText('何かキーを押すかタップして閉じる', W/2, by+bh-18);
+  ctx.textAlign='left';
+}
+
+function drawScareOverlay(){
+  const p=1-scareTimer/1200;
+  ctx.fillStyle = p<0.15 ? 'rgba(255,255,255,0.85)' : 'rgba(120,0,10,0.42)';
+  ctx.fillRect(0,0,W,H);
+  const s=1+(p<0.3?(0.3-p)*2:0);
+  ctx.save();
+  ctx.translate(W/2,H/2);
+  ctx.scale(s,s);
+  ctx.fillStyle='#050505';
+  ctx.beginPath(); ctx.ellipse(0,20,140,170,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=chapterCfg.eyeColor;
+  ctx.beginPath(); ctx.arc(-38,-10,9,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(38,-10,9,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawChapterClearOverlay(){
+  ctx.fillStyle='rgba(3,2,5,0.6)'; ctx.fillRect(0,0,W,H);
+  centerText('扉を抜けた', H/2-16, 20, '#ffd166');
+  centerText(chapterCfg.name+' クリア', H/2+20, 11, '#eae6f5');
+}
+
+function drawEndingOverlay(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#141018'); g.addColorStop(1,'#050408');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('生還', H*0.3, 26, '#e8d98a');
+  centerText('あなたは灯りを頼りに屋敷を抜け出した', H*0.3+30, 10, '#eae6f5');
+  const elapsed=Math.floor((performance.now()-runStartTime)/1000);
+  const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
+  const ss=String(elapsed%60).padStart(2,'0');
+  centerText('生存時間 '+mm+':'+ss+'　発見された回数 '+totalCatches, H*0.3+58, 10, '#9b93b8');
+  centerText('見つけたメモ '+totalNotesFound+' / 9', H*0.3+78, 10, '#9b93b8');
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.72, 10, '#ffd166');
+  ctx.restore();
+}
+
+function drawToast(){
+  if(toastTimer<=0) return;
+  const a=Math.min(1,toastTimer/1800);
+  ctx.globalAlpha=a;
+  ctx.font="11px 'Press Start 2P', monospace";
+  const tw=ctx.measureText(toastText).width+28;
+  ctx.fillStyle='rgba(10,8,14,0.75)';
+  rr(W/2-tw/2, H-58, tw, 30, 6); ctx.fill();
+  ctx.fillStyle='#ffd166'; ctx.textAlign='center';
+  ctx.fillText(toastText, W/2, H-38);
+  ctx.textAlign='left';
+  ctx.globalAlpha=1;
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='TITLE'){ drawTitleScreen(); return; }
+  if(state==='ENDING'){ drawEndingOverlay(); return; }
+  if(!maze) return;
+  drawFloorAndWalls();
+  drawItems();
+  drawEntityBody();
+  drawPlayer();
+  applyLightingMask();
+  drawEntityEyes();
+  drawHUD();
+  if(state==='INTRO') drawIntroOverlay();
+  if(noteText) drawNoteOverlay();
+  else if(scareTimer>0) drawScareOverlay();
+  else if(state==='CHAPTERCLEAR') drawChapterClearOverlay();
+  drawToast();
+}
+
+// ============================================================
+// オーディオエンジン
+// ============================================================
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
+function ensureAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:1;
+  musicGain=audioCtx.createGain(); musicGain.gain.value=0.3;
+  sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.55;
+  musicGain.connect(masterGain); sfxGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+}
+function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+
+const NOTE = { A3:220.00, C4:261.63, D4:293.66, E4:329.63, F4:349.23, A4:440.00, C5:523.25, E5:659.25 };
+
+function playNoiseBurst(duration,vol,fStart,fEnd,dest){
+  if(!audioCtx) return;
+  const bufferSize=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='bandpass';
+  const t0=audioCtx.currentTime;
+  filter.frequency.setValueAtTime(fStart,t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(50,fEnd), t0+duration);
+  const gain=audioCtx.createGain();
+  gain.gain.setValueAtTime(vol,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+duration);
+  src.connect(filter); filter.connect(gain); gain.connect(dest);
+  src.start(t0); src.stop(t0+duration+0.02);
+}
+function playNoteAt(freq,time,dur,type,vol,dest){
+  if(!audioCtx) return;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,time);
+  gain.gain.setValueAtTime(0,time);
+  gain.gain.linearRampToValueAtTime(vol,time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+  osc.connect(gain); gain.connect(dest);
+  osc.start(time); osc.stop(time+dur+0.05);
+}
+
+let droneOsc1=null, droneOsc2=null, droneLFO=null, dronePlaying=false;
+function startAmbient(){
+  resumeAudio(); if(!audioCtx || dronePlaying) return;
+  dronePlaying=true;
+  const droneGain=audioCtx.createGain(); droneGain.gain.value=0.15;
+  const droneFilter=audioCtx.createBiquadFilter(); droneFilter.type='lowpass'; droneFilter.frequency.value=360;
+  droneOsc1=audioCtx.createOscillator(); droneOsc1.type='sawtooth'; droneOsc1.frequency.value=55;
+  droneOsc2=audioCtx.createOscillator(); droneOsc2.type='sawtooth'; droneOsc2.frequency.value=58.5;
+  const lfo=audioCtx.createOscillator(); lfo.frequency.value=0.06;
+  const lfoGain=audioCtx.createGain(); lfoGain.gain.value=90;
+  lfo.connect(lfoGain); lfoGain.connect(droneFilter.frequency);
+  droneOsc1.connect(droneFilter); droneOsc2.connect(droneFilter);
+  droneFilter.connect(droneGain); droneGain.connect(musicGain);
+  droneOsc1.start(); droneOsc2.start(); lfo.start();
+  droneLFO=lfo;
+}
+function stopAmbient(){
+  if(!dronePlaying) return;
+  dronePlaying=false;
+  try{ droneOsc1.stop(); droneOsc2.stop(); droneLFO.stop(); }catch(e){}
+}
+
+let heartbeatActive=false;
+function computeDangerLevel(){
+  if(!entity || !chapterCfg) return 0;
+  const isHunting = chapterCfg.mode==='climax' ? entity.awakened : entity.state==='hunting';
+  if(!isHunting) return 0;
+  const d=Math.hypot(player.x-entity.x, player.y-entity.y);
+  return clamp(1-d/500,0,1);
+}
+function playHeartThump(vol){
+  if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine';
+  osc.frequency.setValueAtTime(70,t0); osc.frequency.exponentialRampToValueAtTime(35,t0+0.13);
+  gain.gain.setValueAtTime(vol,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.16);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.18);
+}
+function scheduleHeartbeat(){
+  if(!heartbeatActive) return;
+  const danger=computeDangerLevel();
+  const interval=900-danger*550;
+  const vol=0.1+danger*0.28;
+  playHeartThump(vol);
+  setTimeout(scheduleHeartbeat, interval);
+}
+
+function playToggleSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='square'; osc.frequency.setValueAtTime(420,t0);
+  gain.gain.setValueAtTime(0.12,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.08);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.1);
+}
+function playPickupSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.setValueAtTime(700,t0); osc.frequency.exponentialRampToValueAtTime(1100,t0+0.09);
+  gain.gain.setValueAtTime(0.001,t0); gain.gain.linearRampToValueAtTime(0.22,t0+0.01); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.15);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.16);
+}
+function playKeySound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['E4',0],['A4',0.1]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.2, 'square', 0.24, sfxGain));
+}
+function playNoteSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.18,0.12,1800,600,sfxGain);
+}
+function playAwakenSting(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.35,0.3,900,60,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(90,t0); osc.frequency.exponentialRampToValueAtTime(45,t0+0.4);
+  gain.gain.setValueAtTime(0.28,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.45);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.5);
+}
+function playScareSting(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.5,0.4,3000,120,sfxGain);
+  const t0=audioCtx.currentTime;
+  [[180,0],[233,0.02],[311,0.04]].forEach(([f,o])=>{
+    const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.setValueAtTime(f,t0+o);
+    g.gain.setValueAtTime(0.001,t0+o); g.gain.linearRampToValueAtTime(0.35,t0+o+0.02); g.gain.exponentialRampToValueAtTime(0.001,t0+o+0.6);
+    osc.connect(g); g.connect(sfxGain);
+    osc.start(t0+o); osc.stop(t0+o+0.65);
+  });
+}
+function playChapterClearJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['A3',0],['C4',0.14],['E4',0.28],['A4',0.46]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.3, 'triangle', 0.26, sfxGain));
+}
+function playEndingJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['A3',0],['E4',0.16],['A4',0.34],['C5',0.56]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.34, 'triangle', 0.28, sfxGain));
+}
+
+const btnMute=document.getElementById('btn-mute');
+btnMute.addEventListener('click', ()=>{
+  ensureAudio();
+  muted=!muted;
+  if(masterGain) masterGain.gain.value = muted?0:1;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// 入力
+// ============================================================
+function handleConfirmKey(){
+  if(state==='TITLE') startGame();
+  else if(state==='ENDING') startGame();
+}
+window.addEventListener('keydown',(e)=>{
+  if(noteText){ noteText=null; return; }
+  if(['ArrowLeft','KeyA'].includes(e.code)) keyState.left=true;
+  if(['ArrowRight','KeyD'].includes(e.code)) keyState.right=true;
+  if(['ArrowUp','KeyW'].includes(e.code)) keyState.up=true;
+  if(['ArrowDown','KeyS'].includes(e.code)) keyState.down=true;
+  if(e.code==='KeyF'){ if(!e.repeat) lightToggleQueued=true; }
+  if(['ShiftLeft','ShiftRight'].includes(e.code)) keyState.breath=true;
+  if(['Enter','Space'].includes(e.code)) handleConfirmKey();
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup',(e)=>{
+  if(['ArrowLeft','KeyA'].includes(e.code)) keyState.left=false;
+  if(['ArrowRight','KeyD'].includes(e.code)) keyState.right=false;
+  if(['ArrowUp','KeyW'].includes(e.code)) keyState.up=false;
+  if(['ArrowDown','KeyS'].includes(e.code)) keyState.down=false;
+  if(['ShiftLeft','ShiftRight'].includes(e.code)) keyState.breath=false;
+});
+
+function bindHold(el,onDown,onUp){
+  el.addEventListener('pointerdown',(e)=>{ e.preventDefault(); onDown(); });
+  el.addEventListener('pointerup', ()=>onUp());
+  el.addEventListener('pointerleave', ()=>onUp());
+  el.addEventListener('pointercancel', ()=>onUp());
+}
+bindHold(document.getElementById('dp-left'), ()=>touchState.left=true, ()=>touchState.left=false);
+bindHold(document.getElementById('dp-right'), ()=>touchState.right=true, ()=>touchState.right=false);
+bindHold(document.getElementById('dp-up'), ()=>touchState.up=true, ()=>touchState.up=false);
+bindHold(document.getElementById('dp-down'), ()=>touchState.down=true, ()=>touchState.down=false);
+bindHold(document.getElementById('btn-breath'), ()=>touchState.breath=true, ()=>touchState.breath=false);
+document.getElementById('btn-light').addEventListener('pointerdown',(e)=>{ e.preventDefault(); lightToggleQueued=true; });
+
+canvas.addEventListener('pointerdown', ()=>{
+  if(noteText){ noteText=null; return; }
+  if(state==='TITLE' || state==='ENDING') startGame();
+});
+
+// ============================================================
+// ループ
+// ============================================================
+let lastTime=null;
+function loop(ts){
+  if(lastTime===null) lastTime=ts;
+  let deltaMs=ts-lastTime; lastTime=ts;
+  if(deltaMs>100) deltaMs=100;
+  const dt=deltaMs/16.6667;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
