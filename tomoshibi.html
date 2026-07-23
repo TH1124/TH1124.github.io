@@ -240,6 +240,7 @@ let toastTimer = 0;
 
 let totalNotesFound = 0;
 let totalCatches = 0;
+let pendingGameOver = false;
 let runStartTime = 0;
 
 let keyState = { left:false, right:false, up:false, down:false, breath:false };
@@ -655,20 +656,8 @@ function checkCatch(){
 
 function triggerJumpscare(){
   scareTimer=1200;
-  totalCatches++;
+  pendingGameOver=true;
   playScareSting();
-  const sp=cellCenterOf(0,0);
-  player.x=sp.x; player.y=sp.y; player.vx=0; player.vy=0;
-  player.invulnTimer=1700;
-  if(chapterCfg.mode==='climax'){
-    entity.awakened=false; entity.state='dormant';
-    entity.x=entity.spawnX; entity.y=entity.spawnY; entity.path=[];
-    player.hasKey=false;
-    if(keysArr[0]) keysArr[0].collected=false;
-  } else {
-    entity.state='patrol'; entity.loseTimer=0; entity.path=[];
-    entity.x=entity.spawnX; entity.y=entity.spawnY;
-  }
 }
 
 // ============================================================
@@ -683,7 +672,7 @@ function updateAtmosphere(dt){
 
 function update(dt){
   if(state==='TITLE'){ updateAtmosphere(dt); return; }
-  if(state==='ENDING'){ return; }
+  if(state==='ENDING' || state==='GAMEOVER'){ return; }
   if(state==='INTRO'){
     introTimer -= dt*16.6667;
     if(introTimer<=0) state='PLAYING';
@@ -694,7 +683,17 @@ function update(dt){
     if(chapterClearTimer<=0) advanceChapter();
     return;
   }
-  if(scareTimer>0){ scareTimer -= dt*16.6667; return; }
+  if(scareTimer>0){
+    scareTimer -= dt*16.6667;
+    if(scareTimer<=0 && pendingGameOver){
+      pendingGameOver=false;
+      state='GAMEOVER';
+      stopAmbient();
+      heartbeatActive=false;
+      playGameOverJingle();
+    }
+    return;
+  }
   if(noteText){ return; }
 
   updatePlayerMovement(dt);
@@ -972,8 +971,26 @@ function drawEndingOverlay(){
   const elapsed=Math.floor((performance.now()-runStartTime)/1000);
   const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
   const ss=String(elapsed%60).padStart(2,'0');
-  centerText('生存時間 '+mm+':'+ss+'　発見された回数 '+totalCatches, H*0.3+58, 10, '#9b93b8');
+  centerText('生存時間 '+mm+':'+ss, H*0.3+58, 10, '#9b93b8');
   centerText('見つけたメモ '+totalNotesFound+' / 9', H*0.3+78, 10, '#9b93b8');
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.72, 10, '#ffd166');
+  ctx.restore();
+}
+
+function drawGameOverOverlay(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1a0608'); g.addColorStop(1,'#050203');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('GAME OVER', H*0.32, 26, '#ff5c4d');
+  centerText('灯りが届く前に、闇に飲まれた', H*0.32+30, 10, '#eae6f5');
+  const elapsed=Math.floor((performance.now()-runStartTime)/1000);
+  const mm2=String(Math.floor(elapsed/60)).padStart(2,'0');
+  const ss2=String(elapsed%60).padStart(2,'0');
+  centerText('到達 '+(chapterCfg?chapterCfg.name:''), H*0.32+58, 10, '#9b93b8');
+  centerText('生存時間 '+mm2+':'+ss2+'　見つけたメモ '+totalNotesFound+' / 9', H*0.32+78, 10, '#9b93b8');
   ctx.save();
   ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
   centerText('press ENTER / SPACE / TAP でもう一度', H*0.72, 10, '#ffd166');
@@ -998,6 +1015,7 @@ function draw(){
   ctx.clearRect(0,0,W,H);
   if(state==='TITLE'){ drawTitleScreen(); return; }
   if(state==='ENDING'){ drawEndingOverlay(); return; }
+  if(state==='GAMEOVER'){ drawGameOverOverlay(); return; }
   if(!maze) return;
   drawFloorAndWalls();
   drawItems();
@@ -1168,6 +1186,11 @@ function playEndingJingle(){
   const t0=audioCtx.currentTime;
   [['A3',0],['E4',0.16],['A4',0.34],['C5',0.56]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.34, 'triangle', 0.28, sfxGain));
 }
+function playGameOverJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['A4',0],['E4',0.2],['C4',0.4],['A3',0.62]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.4, 'sawtooth', 0.22, sfxGain));
+}
 
 const btnMute=document.getElementById('btn-mute');
 btnMute.addEventListener('click', ()=>{
@@ -1182,7 +1205,7 @@ btnMute.addEventListener('click', ()=>{
 // ============================================================
 function handleConfirmKey(){
   if(state==='TITLE') startGame();
-  else if(state==='ENDING') startGame();
+  else if(state==='ENDING' || state==='GAMEOVER') startGame();
 }
 window.addEventListener('keydown',(e)=>{
   if(noteText){ noteText=null; return; }
@@ -1218,7 +1241,7 @@ document.getElementById('btn-light').addEventListener('pointerdown',(e)=>{ e.pre
 
 canvas.addEventListener('pointerdown', ()=>{
   if(noteText){ noteText=null; return; }
-  if(state==='TITLE' || state==='ENDING') startGame();
+  if(state==='TITLE' || state==='ENDING' || state==='GAMEOVER') startGame();
 });
 
 // ============================================================
