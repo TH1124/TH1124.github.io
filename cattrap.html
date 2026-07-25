@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4115378240812746"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ねこ捕獲作戦 -HEX LOCKDOWN-</title>
+<meta name="description" content="無料で遊べるブラウザ用パズルゲーム「ねこ捕獲作戦」。六角形のマスに壁を置いて、逃げ回るねこを外に出さないよう追い詰めよう。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #game-page{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 14px 30px; }
+  #game-page h1.game-title{
+    font-family:'Press Start 2P', monospace; font-size:clamp(16px,3.4vw,26px);
+    color:#ff9d4d; text-shadow:0 0 12px rgba(255,157,77,0.5), 0 3px 0 #3a1c08;
+    letter-spacing:1px; margin:10px 0 -6px;
+  }
+  #game-page .game-subtitle{ font-family:'Press Start 2P', monospace; font-size:10px; color:var(--sub); }
+  #game-wrap{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9;
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 0 0 2px #2a1f16, 0 0 40px rgba(255,157,77,0.12), 0 20px 50px rgba(0,0,0,0.6);
+    background:#140d09;
+  }
+  #ccanvas{ width:100%; height:100%; display:block; cursor:pointer; }
+  #btn-mute{
+    position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(234,230,245,0.3);background:rgba(10,8,14,0.6);color:var(--text);
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #btn-restart{
+    position:absolute;top:10px;left:10px;height:34px;padding:0 14px;border-radius:8px;
+    border:1px solid rgba(234,230,245,0.3);background:rgba(10,8,14,0.6);color:var(--text);
+    font-size:11px;font-family:'Press Start 2P', monospace;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hint2{
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif; font-size:12.5px;
+    color:var(--sub); text-align:center; line-height:1.7; max-width:640px;
+  }
+  .hint2 b{ color:#ff9d4d; }
+  .rotate-hint2{
+    display:none; position:fixed; inset:0; background:var(--bg); color:var(--text); z-index:50;
+    flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace; font-size:13px; text-align:center; gap:16px; padding:20px;
+  }
+  @media (max-width:760px) and (orientation:portrait){
+    .rotate-hint2{ display:flex; }
+    #game-page{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rotate-hint2">
+  <div>📱 ⟳</div>
+  <div>端末を横向きにしてください</div>
+  <div style="font-size:9px;color:#9b93b8;">ROTATE YOUR DEVICE</div>
+</div>
+
+<header class="site-header">
+  <a class="site-title" href="index.html">Mr.ONLINE</a>
+  <nav class="site-nav">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </nav>
+</header>
+
+<div id="game-page">
+  <h1 class="game-title">ねこ捕獲作戦</h1>
+  <div class="game-subtitle">- HEX LOCKDOWN -</div>
+
+  <div id="game-wrap">
+    <canvas id="ccanvas" width="960" height="540"></canvas>
+    <button id="btn-restart" title="はじめから">↻ RETRY</button>
+    <button id="btn-mute" title="音を消す/戻す">🔊</button>
+  </div>
+
+  <div class="hint2">
+    空いているマスを<b>クリック/タップ</b>して壁を置こう。壁を置くたびに、ねこは外に出ようと1マス動きます。<br>
+    ねこが盤面の外周に出られないよう完全に閉じ込めれば勝ち。外周まで辿り着かれたら負けです。
+  </div>
+
+  <div style="max-width:640px;text-align:center;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「ねこ捕獲作戦」は、六角形の盤面でねこを追い詰めるパズルゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+    </p>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-c"></span> Mr.ONLINE
+</footer>
+<script>document.getElementById('year-c').textContent = new Date().getFullYear();</script>
+
+<script>
+(function(){
+"use strict";
+
+// ============================================================
+// 基本設定
+// ============================================================
+const canvas = document.getElementById('ccanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const HEX_SIZE = 28;
+const BOARD_R = 5;
+const BOARD_CX = 480, BOARD_CY = 300;
+const INITIAL_WALL_RATIO = 0.08;
+const CAT_THINK_MS = 380;
+const CAT_MOVE_MS = 220;
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+// ============================================================
+// 六角グリッド数学
+// ============================================================
+function hexKey(q,r){ return q+','+r; }
+function hexDistance(q,r){ return (Math.abs(q)+Math.abs(q+r)+Math.abs(r))/2; }
+const DIRS = [{q:1,r:0},{q:1,r:-1},{q:0,r:-1},{q:-1,r:0},{q:-1,r:1},{q:0,r:1}];
+
+function buildBoard(radius){
+  const cells = new Map();
+  for(let q=-radius;q<=radius;q++){
+    const r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius);
+    for(let r=r1;r<=r2;r++){
+      cells.set(hexKey(q,r), {q,r,blocked:false, dist:hexDistance(q,r)});
+    }
+  }
+  return cells;
+}
+function neighbors(q,r){ return DIRS.map(d=>({q:q+d.q, r:r+d.r})); }
+
+function axialToPixel(q,r){
+  const x = HEX_SIZE*Math.sqrt(3)*(q+r/2);
+  const y = HEX_SIZE*1.5*r;
+  return {x:BOARD_CX+x, y:BOARD_CY+y};
+}
+function axialRound(qf,rf){
+  const xf=qf, zf=rf, yf=-xf-zf;
+  let rx=Math.round(xf), ry=Math.round(yf), rz=Math.round(zf);
+  const dx=Math.abs(rx-xf), dy=Math.abs(ry-yf), dz=Math.abs(rz-zf);
+  if(dx>dy && dx>dz) rx=-ry-rz;
+  else if(dy>dz) rz=-rx-ry;
+  else ry=-rx-rz;
+  return {q:rx, r:rz};
+}
+function pixelToAxial(px,py){
+  const x = px-BOARD_CX, y = py-BOARD_CY;
+  const qf = (Math.sqrt(3)/3*x - 1/3*y)/HEX_SIZE;
+  const rf = (2/3*y)/HEX_SIZE;
+  return axialRound(qf,rf);
+}
+
+function catCanEscape(cells, radius, startQ, startR){
+  const startKey = hexKey(startQ,startR);
+  if(!cells.has(startKey)) return false;
+  const visited = new Set([startKey]);
+  const queue=[{q:startQ,r:startR}];
+  let qi=0;
+  while(qi<queue.length){
+    const cur=queue[qi++];
+    const curCell=cells.get(hexKey(cur.q,cur.r));
+    if(curCell.dist===radius) return true;
+    for(const n of neighbors(cur.q,cur.r)){
+      const k=hexKey(n.q,n.r);
+      const ncell=cells.get(k);
+      if(ncell && !ncell.blocked && !visited.has(k)){
+        visited.add(k);
+        queue.push(n);
+      }
+    }
+  }
+  return false;
+}
+function findEscapeTargets(cells, radius, startQ, startR){
+  const startKey = hexKey(startQ,startR);
+  const cameFrom = new Map([[startKey, null]]);
+  let frontier = [{q:startQ,r:startR}];
+  let foundTargets = [];
+  while(frontier.length>0 && foundTargets.length===0){
+    const nextFrontier=[];
+    for(const cur of frontier){
+      const curCell = cells.get(hexKey(cur.q,cur.r));
+      if(curCell.dist===radius){ foundTargets.push(cur); continue; }
+      for(const n of neighbors(cur.q,cur.r)){
+        const k=hexKey(n.q,n.r);
+        const ncell=cells.get(k);
+        if(ncell && !ncell.blocked && !cameFrom.has(k)){
+          cameFrom.set(k, hexKey(cur.q,cur.r));
+          nextFrontier.push(n);
+        }
+      }
+    }
+    if(foundTargets.length>0) break;
+    frontier=nextFrontier;
+  }
+  return {cameFrom, targets:foundTargets};
+}
+function reconstructNextStep(cameFrom, startKey, targetKey){
+  let cur = targetKey;
+  let path=[cur];
+  while(cameFrom.get(cur) !== null && cameFrom.get(cur) !== undefined){
+    cur = cameFrom.get(cur);
+    path.push(cur);
+    if(cur===startKey) break;
+  }
+  path.reverse();
+  return path[1];
+}
+function computeCatMove(cells, radius, catQ, catR){
+  const {cameFrom, targets} = findEscapeTargets(cells, radius, catQ, catR);
+  if(targets.length===0) return null;
+  const target = targets[Math.floor(Math.random()*targets.length)];
+  const targetKey = hexKey(target.q, target.r);
+  const nextKey = reconstructNextStep(cameFrom, hexKey(catQ,catR), targetKey);
+  const [nq, nr] = nextKey.split(',').map(Number);
+  return {q:nq, r:nr};
+}
+
+// ============================================================
+// ゲーム状態
+// ============================================================
+let state='TITLE'; // TITLE, PLAYING, WIN, LOSE
+let cells = null;
+let catQ=0, catR=0;
+let turnPhase='PLAYER'; // PLAYER, THINKING, MOVING
+let thinkTimer=0;
+let catAnim=null;
+let turnCount=0;
+let hoverKey=null;
+let toastText=''; let toastTimer=0;
+
+let bgParticles=[];
+for(let i=0;i<34;i++){
+  bgParticles.push({ x:Math.random()*W, y:Math.random()*H, vy:-(0.08+Math.random()*0.2), r:0.8+Math.random()*1.6, a:0.08+Math.random()*0.3 });
+}
+
+function toast(t){ toastText=t; toastTimer=1200; }
+
+function setupInitialWalls(){
+  const allKeys = Array.from(cells.keys()).filter(k=>k!=='0,0');
+  const wallCount = Math.round(allKeys.length*INITIAL_WALL_RATIO);
+  let ok=false;
+  for(let attempt=0; attempt<30 && !ok; attempt++){
+    for(const c of cells.values()) c.blocked=false;
+    const shuffled = allKeys.slice().sort(()=>Math.random()-0.5);
+    for(let i=0;i<wallCount;i++) cells.get(shuffled[i]).blocked=true;
+    if(catCanEscape(cells, BOARD_R, 0, 0)) ok=true;
+  }
+  if(!ok){ for(const c of cells.values()) c.blocked=false; }
+}
+
+function startGame(){
+  resumeAudio();
+  cells = buildBoard(BOARD_R);
+  setupInitialWalls();
+  catQ=0; catR=0;
+  turnPhase='PLAYER';
+  thinkTimer=0; catAnim=null;
+  turnCount=0;
+  toastText=''; toastTimer=0;
+  state='PLAYING';
+  startAmbient();
+}
+
+function placeWall(q,r){
+  const cell = cells.get(hexKey(q,r));
+  cell.blocked=true;
+  turnCount++;
+  playPlaceSound();
+  if(!catCanEscape(cells, BOARD_R, catQ, catR)){
+    state='WIN';
+    stopAmbient();
+    playWinJingle();
+    return;
+  }
+  turnPhase='THINKING';
+  thinkTimer=CAT_THINK_MS;
+}
+
+document.getElementById('btn-restart').addEventListener('click', ()=>{
+  if(state!=='TITLE') startGame();
+});
+
+// ============================================================
+// 更新
+// ============================================================
+function catVisualPos(){
+  if(!catAnim) return axialToPixel(catQ,catR);
+  const t = Math.min(1, catAnim.elapsed/catAnim.duration);
+  const e = 1-Math.pow(1-t,2);
+  return {
+    x: catAnim.fromX + (catAnim.toX-catAnim.fromX)*e,
+    y: catAnim.fromY + (catAnim.toY-catAnim.fromY)*e
+  };
+}
+
+function updateAtmosphere(dt){
+  for(const p of bgParticles){ p.y+=p.vy*dt; if(p.y<-10) p.y=H+10; }
+}
+
+function update(dt){
+  if(state==='TITLE'){ updateAtmosphere(dt); return; }
+  if(state==='WIN' || state==='LOSE'){ updateAtmosphere(dt); return; }
+
+  if(turnPhase==='THINKING'){
+    thinkTimer -= dt*16.6667;
+    if(thinkTimer<=0){
+      const move = computeCatMove(cells, BOARD_R, catQ, catR);
+      const from = axialToPixel(catQ,catR);
+      if(move){
+        catQ=move.q; catR=move.r;
+      }
+      const to = axialToPixel(catQ,catR);
+      catAnim = {fromX:from.x, fromY:from.y, toX:to.x, toY:to.y, elapsed:0, duration:CAT_MOVE_MS};
+      playStepSound();
+      turnPhase='MOVING';
+    }
+  } else if(turnPhase==='MOVING'){
+    catAnim.elapsed += dt*16.6667;
+    if(catAnim.elapsed>=catAnim.duration){
+      catAnim=null;
+      const curCell = cells.get(hexKey(catQ,catR));
+      if(curCell.dist===BOARD_R){
+        state='LOSE';
+        stopAmbient();
+        playLoseJingle();
+      } else {
+        turnPhase='PLAYER';
+      }
+    }
+  }
+  if(toastTimer>0) toastTimer -= dt*16.6667;
+}
+
+// ============================================================
+// 描画
+// ============================================================
+function hexCorners(cx,cy,size){
+  const pts=[];
+  for(let i=0;i<6;i++){
+    const ang = Math.PI/180*(60*i-30);
+    pts.push([cx+size*Math.cos(ang), cy+size*Math.sin(ang)]);
+  }
+  return pts;
+}
+function drawHex(cx,cy,size,fill,stroke){
+  const pts = hexCorners(cx,cy,size);
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i=1;i<6;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=1.5; ctx.stroke(); }
+}
+
+function drawBoard(){
+  for(const cell of cells.values()){
+    const {x,y} = axialToPixel(cell.q, cell.r);
+    let fill;
+    if(cell.blocked) fill='#5a3a22';
+    else if(cell.dist===BOARD_R) fill='#3a2a1a';
+    else fill='#e8d9b5';
+    drawHex(x,y,HEX_SIZE-1.5, fill, 'rgba(20,13,9,0.55)');
+    if(cell.blocked){
+      ctx.fillStyle='#8a6236';
+      ctx.beginPath(); ctx.arc(x,y,HEX_SIZE*0.32,0,Math.PI*2); ctx.fill();
+    }
+  }
+  if(hoverKey && state==='PLAYING' && turnPhase==='PLAYER'){
+    const cell = cells.get(hoverKey);
+    if(cell && !cell.blocked && !(cell.q===catQ&&cell.r===catR)){
+      const {x,y}=axialToPixel(cell.q,cell.r);
+      drawHex(x,y,HEX_SIZE-1.5, 'rgba(255,157,77,0.28)', '#ff9d4d');
+    }
+  }
+}
+
+function drawCat(){
+  const p = catVisualPos();
+  ctx.save();
+  ctx.translate(p.x,p.y);
+  // tail
+  ctx.strokeStyle='#e8862f'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(10,8); ctx.quadraticCurveTo(20,4,18,-6); ctx.stroke();
+  // body
+  ctx.fillStyle='#e8862f';
+  ctx.beginPath(); ctx.ellipse(0,4,13,10,0,0,Math.PI*2); ctx.fill();
+  // ears
+  ctx.beginPath(); ctx.moveTo(-9,-8); ctx.lineTo(-13,-17); ctx.lineTo(-3,-11); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(9,-8); ctx.lineTo(13,-17); ctx.lineTo(3,-11); ctx.closePath(); ctx.fill();
+  // head
+  ctx.beginPath(); ctx.arc(0,-6,10,0,Math.PI*2); ctx.fill();
+  // face stripe
+  ctx.fillStyle='#fff3e2';
+  ctx.beginPath(); ctx.ellipse(0,-3,5,4,0,0,Math.PI*2); ctx.fill();
+  // eyes
+  ctx.fillStyle='#211208';
+  ctx.beginPath(); ctx.arc(-4,-7,1.6,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4,-7,1.6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawHUD(){
+  ctx.font="11px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(20,13,9,0.6)';
+  ctx.fillRect(0,0,180,34);
+  ctx.fillStyle='#ffd9a8';
+  ctx.fillText('手数 '+String(turnCount).padStart(3,'0'), 16, 22);
+}
+
+function centerText(text,y,size,color){
+  ctx.font=size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=color;
+  ctx.textAlign='center';
+  ctx.fillText(text, W/2, y);
+  ctx.textAlign='left';
+}
+function drawDust(){
+  for(const p of bgParticles){
+    ctx.globalAlpha=p.a;
+    ctx.fillStyle='#ffd9a8';
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawTitleScreen(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#241708'); g.addColorStop(1,'#100a05');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('ねこ捕獲作戦', H*0.32, 26, '#ff9d4d');
+  centerText('- HEX LOCKDOWN -', H*0.32+30, 11, '#9b93b8');
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP', H*0.62, 12, '#ffd166');
+  ctx.restore();
+  centerText('壁を置いて、ねこを外に出さないよう追い詰めろ', H*0.72, 10, '#9b93b8');
+}
+
+function drawEndOverlay(win){
+  ctx.fillStyle='rgba(10,6,3,0.72)'; ctx.fillRect(0,0,W,H);
+  drawDust();
+  if(win){
+    centerText('捕獲成功!', H*0.36, 24, '#ffd166');
+    centerText(turnCount+' 手で ねこを閉じ込めた', H*0.36+32, 11, '#eae6f5');
+  } else {
+    centerText('逃げられた…', H*0.36, 24, '#ff6b6b');
+    centerText(turnCount+' 手で ねこは外へ出てしまった', H*0.36+32, 11, '#eae6f5');
+  }
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.68, 10, '#ffd166');
+  ctx.restore();
+}
+
+function drawToast(){
+  if(toastTimer<=0) return;
+  const a=Math.min(1,toastTimer/1200);
+  ctx.globalAlpha=a;
+  ctx.font="10px 'Press Start 2P', monospace";
+  const tw=ctx.measureText(toastText).width+26;
+  ctx.fillStyle='rgba(10,6,3,0.75)';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2-tw/2,H-52,tw,28,6) : ctx.rect(W/2-tw/2,H-52,tw,28);
+  ctx.fill();
+  ctx.fillStyle='#ffd166'; ctx.textAlign='center';
+  ctx.fillText(toastText, W/2, H-33);
+  ctx.textAlign='left';
+  ctx.globalAlpha=1;
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='TITLE'){ drawTitleScreen(); return; }
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#241708'); g.addColorStop(1,'#140d09');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawBoard();
+  drawCat();
+  drawHUD();
+  drawToast();
+  if(state==='WIN') drawEndOverlay(true);
+  else if(state==='LOSE') drawEndOverlay(false);
+}
+
+// ============================================================
+// オーディオエンジン
+// ============================================================
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
+function ensureAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:1;
+  musicGain=audioCtx.createGain(); musicGain.gain.value=0.25;
+  sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.55;
+  musicGain.connect(masterGain); sfxGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+}
+function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+
+const NOTE = { C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00, C5:523.25, D5:587.33, E5:659.25, G5:783.99 };
+
+function playNoiseBurst(duration,vol,fStart,fEnd,dest){
+  if(!audioCtx) return;
+  const bufferSize=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='bandpass';
+  const t0=audioCtx.currentTime;
+  filter.frequency.setValueAtTime(fStart,t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(50,fEnd), t0+duration);
+  const gain=audioCtx.createGain();
+  gain.gain.setValueAtTime(vol,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+duration);
+  src.connect(filter); filter.connect(gain); gain.connect(dest);
+  src.start(t0); src.stop(t0+duration+0.02);
+}
+function playNoteAt(freq,time,dur,type,vol,dest){
+  if(!audioCtx) return;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,time);
+  gain.gain.setValueAtTime(0,time);
+  gain.gain.linearRampToValueAtTime(vol,time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+  osc.connect(gain); gain.connect(dest);
+  osc.start(time); osc.stop(time+dur+0.05);
+}
+
+// --- 落ち着いたBGM(マリンバ風アルペジオ) ---
+const BGM_BPM = 84;
+const LEAD_PATTERN = ['C4',0,'E4',0,'G4',0,'E4',0,'A4',0,'G4',0,'E4',0,'D4',0];
+let bgmStep=0, bgmNextTime=0, bgmTimer=null, bgmPlaying=false;
+function stepSeconds(){ return 60.0/BGM_BPM/2; }
+function scheduleBgmStep(step,time){
+  const n = LEAD_PATTERN[step];
+  if(n) playNoteAt(NOTE[n], time, stepSeconds()*1.6, 'triangle', 0.14, musicGain);
+}
+function bgmTick(){
+  while(bgmNextTime < audioCtx.currentTime+0.12){
+    scheduleBgmStep(bgmStep, bgmNextTime);
+    bgmNextTime += stepSeconds();
+    bgmStep=(bgmStep+1)%LEAD_PATTERN.length;
+  }
+}
+function startAmbient(){
+  resumeAudio(); if(!audioCtx || bgmPlaying) return;
+  bgmPlaying=true; bgmStep=0; bgmNextTime=audioCtx.currentTime+0.05;
+  bgmTimer=setInterval(bgmTick, 30);
+}
+function stopAmbient(){
+  bgmPlaying=false;
+  if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; }
+}
+
+function playPlaceSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.09,0.22,1400,300,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='square'; osc.frequency.setValueAtTime(180,t0); osc.frequency.exponentialRampToValueAtTime(90,t0+0.08);
+  gain.gain.setValueAtTime(0.18,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.1);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.12);
+}
+function playStepSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.06,0.1,900,400,sfxGain);
+}
+function playWinJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['C4',0],['E4',0.12],['G4',0.24],['C5',0.36],['G4',0.48],['C5',0.6]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.28, 'square', 0.28, sfxGain));
+}
+function playLoseJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['A4',0],['E4',0.18],['C4',0.36],['G4',0.02]].forEach(([n,o])=>{});
+  [['G4',0],['E4',0.2],['C4',0.42]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.38, 'sawtooth', 0.22, sfxGain));
+}
+
+const btnMute=document.getElementById('btn-mute');
+btnMute.addEventListener('click', ()=>{
+  ensureAudio();
+  muted=!muted;
+  if(masterGain) masterGain.gain.value = muted?0:1;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// 入力
+// ============================================================
+function handleConfirmKey(){
+  if(state==='TITLE' || state==='WIN' || state==='LOSE') startGame();
+}
+window.addEventListener('keydown',(e)=>{
+  if(['Enter','Space'].includes(e.code)){ handleConfirmKey(); e.preventDefault(); }
+});
+
+function getCanvasPos(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W/rect.width, scaleY = H/rect.height;
+  return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
+}
+
+canvas.addEventListener('pointermove',(e)=>{
+  if(state!=='PLAYING' || turnPhase!=='PLAYER'){ hoverKey=null; return; }
+  const p = getCanvasPos(e.clientX, e.clientY);
+  const {q,r} = pixelToAxial(p.x,p.y);
+  const key = hexKey(q,r);
+  hoverKey = cells.has(key) ? key : null;
+});
+
+canvas.addEventListener('click',(e)=>{
+  if(state==='TITLE' || state==='WIN' || state==='LOSE'){ startGame(); return; }
+  if(state!=='PLAYING' || turnPhase!=='PLAYER') return;
+  const p = getCanvasPos(e.clientX, e.clientY);
+  const {q,r} = pixelToAxial(p.x,p.y);
+  const key = hexKey(q,r);
+  const cell = cells.get(key);
+  if(!cell){ return; }
+  if(cell.blocked){ toast('もう壁がある'); return; }
+  if(q===catQ && r===catR){ toast('ねこのマスには置けない'); return; }
+  placeWall(q,r);
+});
+
+// ============================================================
+// ループ
+// ============================================================
+let lastTime=null;
+function loop(ts){
+  if(lastTime===null) lastTime=ts;
+  let deltaMs=ts-lastTime; lastTime=ts;
+  if(deltaMs>100) deltaMs=100;
+  const dt=deltaMs/16.6667;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

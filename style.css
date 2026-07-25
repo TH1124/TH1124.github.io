@@ -152,6 +152,11 @@ table.info-table th{ color:var(--gold);width:38%; }
   color:#e8d98a;
   text-shadow:0 0 10px rgba(232,217,138,0.5);
 }
+.game-card .thumb.ct{
+  background:radial-gradient(ellipse at 40% 30%, #3a2a1a 0%, #241708 60%, #150d05 100%);
+  color:#ff9d4d;
+  text-shadow:0 0 10px rgba(255,157,77,0.5);
+}
 .game-card .thumb .dot{
   position:absolute;width:6px;height:6px;border-radius:50%;
   background:currentColor;opacity:0.55;
