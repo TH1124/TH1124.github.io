@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4115378240812746"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>浴室清掃員の夜勤 -SCRUB TILL DAWN-</title>
+<meta name="description" content="無料で遊べるブラウザ用スコアリングホラーゲーム「浴室清掃員の夜勤」。事故物件の浴室で、ドア・鏡・天井・床の異変に同時対応しながら夜を生き延びろ。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #game-page{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 14px 30px; }
+  #game-page h1.game-title{
+    font-family:'Press Start 2P', monospace; font-size:clamp(15px,3.2vw,24px);
+    color:#c94b4b; text-shadow:0 0 12px rgba(201,75,75,0.5), 0 3px 0 #2a0808;
+    letter-spacing:1px; margin:10px 0 -6px; text-align:center;
+  }
+  #game-page .game-subtitle{ font-family:'Press Start 2P', monospace; font-size:10px; color:var(--sub); }
+  #game-wrap{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9;
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 0 0 2px #241010, 0 0 40px rgba(201,75,75,0.12), 0 20px 50px rgba(0,0,0,0.6);
+    background:#0a0607;
+  }
+  #ncanvas{ width:100%; height:100%; display:block; cursor:pointer; }
+  #btn-mute{
+    position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(234,230,245,0.3);background:rgba(10,8,14,0.6);color:var(--text);
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #touch-controls{ position:absolute; inset:0; display:none; pointer-events:none; }
+  .dpad{ position:absolute; left:12px; bottom:12px; width:184px; height:184px; pointer-events:auto; }
+  .dpad button{
+    position:absolute; width:58px; height:58px; border-radius:10px;
+    border:2px solid rgba(234,230,245,0.3); background:rgba(10,8,14,0.6); color:var(--text);
+    font-family:'Press Start 2P', monospace; font-size:9px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .dpad button:active{ background:rgba(201,75,75,0.35); }
+  #dp-up{ left:63px; top:0; }
+  #dp-down{ left:63px; top:126px; }
+  #dp-left{ left:0; top:63px; }
+  #dp-right{ left:126px; top:63px; }
+  @media (pointer:coarse){ #touch-controls{ display:block; } }
+  .hint2{
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif; font-size:12.5px;
+    color:var(--sub); text-align:center; line-height:1.7; max-width:660px;
+  }
+  .hint2 b{ color:#c94b4b; }
+  .rotate-hint2{
+    display:none; position:fixed; inset:0; background:var(--bg); color:var(--text); z-index:50;
+    flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace; font-size:13px; text-align:center; gap:16px; padding:20px;
+  }
+  @media (max-width:760px) and (orientation:portrait){
+    .rotate-hint2{ display:flex; }
+    #game-page{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rotate-hint2">
+  <div>📱 ⟳</div>
+  <div>端末を横向きにしてください</div>
+  <div style="font-size:9px;color:#9b93b8;">ROTATE YOUR DEVICE</div>
+</div>
+
+<header class="site-header">
+  <a class="site-title" href="index.html">Mr.ONLINE</a>
+  <nav class="site-nav">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </nav>
+</header>
+
+<div id="game-page">
+  <h1 class="game-title">浴室清掃員の夜勤</h1>
+  <div class="game-subtitle">- SCRUB TILL DAWN -</div>
+
+  <div id="game-wrap">
+    <canvas id="ncanvas" width="960" height="540"></canvas>
+    <button id="btn-mute" title="音を消す/戻す">🔊</button>
+    <div id="touch-controls">
+      <div class="dpad">
+        <button id="dp-up">天井</button>
+        <button id="dp-down">床</button>
+        <button id="dp-left">ドア</button>
+        <button id="dp-right">鏡</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint2">
+    視点切り替え <b>← ドア / → 鏡 / ↑ 天井 / ↓ 床</b>(スマホは画面下のボタン)&nbsp;&nbsp;操作 <b>クリック / タップ</b><br>
+    どの持ち場も目を離した間に進行し続けます。血の手形3つ・鏡の女への接近・蜘蛛の巣・髪の毛の放置、いずれかが限界を超えるとゲームオーバー。スコアを稼ぎながら夜を生き延びろ。
+  </div>
+
+  <div style="max-width:640px;text-align:center;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「浴室清掃員の夜勤」は、事故物件の浴室を舞台にしたスコアリングホラーです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+    </p>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-n"></span> Mr.ONLINE
+</footer>
+<script>document.getElementById('year-n').textContent = new Date().getFullYear();</script>
+
+<script>
+(function(){
+"use strict";
+
+// ============================================================
+// 基本設定
+// ============================================================
+const canvas = document.getElementById('ncanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rr(x,y,w,h,r){
+  if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// --- 難易度パラメータ ---
+const DOOR_WET_DURATION = 9000;
+const DOOR_SCRUB_NORMAL = 3;
+const DOOR_SCRUB_BLOOD = 6;
+const DOOR_SCORE_NORMAL = 20;
+const DOOR_SCORE_BLOOD = 150;
+const DOOR_BASE_INTERVAL = 2200;
+const DOOR_BLOOD_CHANCE = 0.15;
+
+const MIRROR_BASE_RISE = 1.4;
+const MIRROR_MARKER_PERIOD = 1400;
+const EXORCISM_PERFECT = 45, EXORCISM_GREAT = 28, EXORCISM_GOOD = 14, EXORCISM_MISS = 2;
+
+const CEIL_WEB_SWEEP_NEEDED = 3;
+const CEIL_WEB_SCORE = 10;
+const CEIL_WEB_INTERVAL = 1800;
+const CEIL_WEB_GAMEOVER_THRESHOLD = 4;
+const CEIL_SPIDER_MIN = 4000, CEIL_SPIDER_MAX = 7000;
+const CEIL_SPIDER_WINDOW = 2200;
+const CEIL_SPIDER_SCORE = 80;
+const CEIL_GOLD_CHANCE = 0.02;
+const CEIL_GOLD_SCORE = 1500;
+
+const FLOOR_INTERVAL = 1500;
+const FLOOR_CENTIPEDE_CHANCE = 0.12;
+const FLOOR_HAIR_MIN = 5, FLOOR_HAIR_MAX = 15;
+const FLOOR_HAIR_GAMEOVER_THRESHOLD = 6;
+const FLOOR_CENTIPEDE_PENALTY = -50;
+const FLOOR_FREEZE_MS = 3000;
+
+const DIFF_LEVELS = [0.25, 0.7, 1.3, 2.0, 3.0];
+const DIFF_LEVEL_DURATION = 60; // 秒/段階
+function computeDifficultyLevel(survivalSec){ return Math.min(DIFF_LEVELS.length-1, Math.floor(survivalSec/DIFF_LEVEL_DURATION)); }
+function computeDifficulty(survivalSec){ return DIFF_LEVELS[computeDifficultyLevel(survivalSec)]; }
+
+// ============================================================
+// グローバル状態
+// ============================================================
+let state='TITLE'; // TITLE, PLAYING, GAMEOVER
+let currentView='door'; // door, mirror, ceiling, floor
+let score=0;
+let survivalTime=0;
+let difficulty=1;
+let difficultyLevel=0, lastDifficultyLevel=0;
+let inputFrozen=false, frozenTimer=0;
+let scareTimer=0, pendingGameOver=false, gameOverReason='';
+let viewLabelTimer=0;
+let toastText='', toastTimer=0;
+const stats = { stainsCleaned:0, bloodCleaned:0, spidersKilled:0, goldSpiders:0, hairCollected:0, centipedeMistakes:0 };
+
+function addScore(n){ score = Math.max(0, score+n); }
+function toast(t){ toastText=t; toastTimer=1300; }
+
+let bgParticles=[];
+for(let i=0;i<30;i++){
+  bgParticles.push({ x:Math.random()*W, y:Math.random()*H, vy:-(0.08+Math.random()*0.2), r:0.8+Math.random()*1.5, a:0.06+Math.random()*0.22 });
+}
+
+// ============================================================
+// ドア(汚れ落とし)
+// ============================================================
+let doorSlots=[];
+let doorSpawnTimer=800;
+function initDoor(){
+  const positions=[[330,190],[630,190],[330,300],[630,300],[330,410],[630,410]];
+  doorSlots = positions.map(([x,y])=>({x,y,stain:null}));
+  doorSpawnTimer=800;
+}
+function updateDoorAlways(dt){
+  doorSpawnTimer -= dt*16.6667;
+  if(doorSpawnTimer<=0){
+    doorSpawnTimer = DOOR_BASE_INTERVAL/difficulty;
+    const isBlood = Math.random()<DOOR_BLOOD_CHANCE;
+    if(isBlood){
+      // 血の手形は「空きマス」に加えて「普通の汚れが乗っているマス」も上書き対象にする
+      const targets = doorSlots.filter(s=>!s.stain || s.stain.type==='normal');
+      if(targets.length>0){
+        const slot = pick(targets);
+        const wasOverwrite = !!slot.stain;
+        slot.stain = { type:'blood', wet:false, scrub:0, scrubNeeded:DOOR_SCRUB_BLOOD, wetTimer:0 };
+        if(wasOverwrite){ playBloodOverwriteSound(); toast('血の手形が浮き出た…'); }
+      }
+    } else {
+      const empties = doorSlots.filter(s=>!s.stain);
+      if(empties.length>0){
+        const slot = pick(empties);
+        slot.stain = { type:'normal', wet:false, scrub:0, scrubNeeded:DOOR_SCRUB_NORMAL, wetTimer:0 };
+      }
+    }
+  }
+  for(const s of doorSlots){
+    if(s.stain && s.stain.wet){
+      s.stain.wetTimer -= dt*16.6667;
+      if(s.stain.wetTimer<=0){ s.stain.wet=false; s.stain.scrub=0; }
+    }
+  }
+}
+function countBlood(){ return doorSlots.filter(s=>s.stain && s.stain.type==='blood').length; }
+function checkBloodGameOver(){
+  if(countBlood()>=3) triggerGameOver('blood');
+}
+function handleDoorClick(p){
+  for(const slot of doorSlots){
+    if(!slot.stain) continue;
+    if(Math.hypot(p.x-slot.x, p.y-slot.y) < 42){
+      if(!slot.stain.wet){
+        slot.stain.wet=true; slot.stain.wetTimer=DOOR_WET_DURATION;
+        playWaterSound();
+      } else {
+        slot.stain.scrub++;
+        playScrubSound();
+        if(slot.stain.scrub>=slot.stain.scrubNeeded){
+          const wasBlood = slot.stain.type==='blood';
+          addScore(wasBlood?DOOR_SCORE_BLOOD:DOOR_SCORE_NORMAL);
+          stats.stainsCleaned++; if(wasBlood) stats.bloodCleaned++;
+          wasBlood ? playBloodCleanJingle() : playCleanSound();
+          slot.stain=null;
+        }
+      }
+      return;
+    }
+  }
+}
+
+// ============================================================
+// 鏡(お祓い)
+// ============================================================
+let ghostProximity=0;
+let mirrorPhase=0, mirrorMarkerPos=0, exorcismCooldown=0;
+let exResultText='', exResultTimer=0;
+function initMirror(){ ghostProximity=0; mirrorPhase=0; mirrorMarkerPos=0; exorcismCooldown=0; }
+function updateMirrorAlways(dt){
+  ghostProximity += MIRROR_BASE_RISE*difficulty*(dt/60);
+  if(ghostProximity>100) ghostProximity=100;
+}
+function checkGhostGameOver(){
+  if(ghostProximity>=100) triggerGameOver('ghost');
+}
+function updateMirrorGauge(dt){
+  if(exorcismCooldown>0){
+    exorcismCooldown -= dt*16.6667;
+    if(exorcismCooldown<=0) mirrorPhase=0;
+    return;
+  }
+  mirrorPhase += dt*16.6667;
+  mirrorMarkerPos = Math.sin(mirrorPhase/MIRROR_MARKER_PERIOD*Math.PI*2);
+}
+function handleMirrorClick(){
+  if(exorcismCooldown>0) return;
+  const a = Math.abs(mirrorMarkerPos);
+  let quality, reduction;
+  if(a<0.12){ quality='perfect'; reduction=EXORCISM_PERFECT; }
+  else if(a<0.35){ quality='great'; reduction=EXORCISM_GREAT; }
+  else if(a<0.65){ quality='good'; reduction=EXORCISM_GOOD; }
+  else { quality='miss'; reduction=EXORCISM_MISS; }
+  ghostProximity = Math.max(0, ghostProximity-reduction);
+  exResultText = quality.toUpperCase();
+  exResultTimer = 700;
+  playExorcismSound(quality);
+  exorcismCooldown = 550;
+}
+
+// ============================================================
+// 天井(クモの巣掃除・クモ叩き)
+// ============================================================
+let webSlots=[];
+let ceilWebTimer=900;
+let spider=null;
+let spiderSpawnTimer=3000;
+function initCeiling(){
+  const positions=[[210,150],[480,120],[750,150],[340,290],[620,290]];
+  webSlots = positions.map(([x,y])=>({x,y,active:false,progress:0}));
+  ceilWebTimer=900; spider=null; spiderSpawnTimer=3000;
+}
+function updateCeilingAlways(dt){
+  ceilWebTimer -= dt*16.6667;
+  if(ceilWebTimer<=0){
+    ceilWebTimer = CEIL_WEB_INTERVAL/difficulty;
+    const empties = webSlots.filter(s=>!s.active);
+    if(empties.length){ const s=pick(empties); s.active=true; s.progress=0; }
+  }
+}
+function countActiveWebs(){ return webSlots.filter(s=>s.active).length; }
+function checkWebGameOver(){
+  if(countActiveWebs()>=CEIL_WEB_GAMEOVER_THRESHOLD) triggerGameOver('web');
+}
+function updateCeilingActive(dt){
+  if(spider){
+    spider.timer -= dt*16.6667;
+    if(spider.timer<=0) spider=null;
+  } else {
+    spiderSpawnTimer -= dt*16.6667;
+    if(spiderSpawnTimer<=0){
+      spiderSpawnTimer = (CEIL_SPIDER_MIN + Math.random()*(CEIL_SPIDER_MAX-CEIL_SPIDER_MIN))/difficulty;
+      const isGolden = Math.random()<CEIL_GOLD_CHANCE;
+      spider = { x:150+Math.random()*660, y:120+Math.random()*260, timer:CEIL_SPIDER_WINDOW, isGolden };
+    }
+  }
+}
+function handleCeilingClick(p){
+  if(spider){
+    if(Math.hypot(p.x-spider.x, p.y-spider.y) < 38){
+      addScore(spider.isGolden?CEIL_GOLD_SCORE:CEIL_SPIDER_SCORE);
+      stats.spidersKilled++; if(spider.isGolden) stats.goldSpiders++;
+      spider.isGolden ? playGoldFanfare() : playSpiderHitSound();
+      spider=null;
+      return;
+    }
+  }
+  for(const slot of webSlots){
+    if(!slot.active) continue;
+    if(Math.hypot(p.x-slot.x, p.y-slot.y) < 44){
+      slot.progress++;
+      playSweepSound();
+      if(slot.progress>=CEIL_WEB_SWEEP_NEEDED){
+        addScore(CEIL_WEB_SCORE);
+        slot.active=false; slot.progress=0;
+      }
+      return;
+    }
+  }
+}
+
+// ============================================================
+// 床(髪の毛回収・ムカデ)
+// ============================================================
+let floorSlots=[];
+let floorSpawnTimer=700;
+function initFloor(){
+  const positions=[[200,180],[380,140],[560,190],[740,150],[280,320],[480,350],[680,320]];
+  floorSlots = positions.map(([x,y])=>({x,y,item:null,wig:Math.random()*Math.PI*2}));
+  floorSpawnTimer=700;
+}
+function updateFloorAlways(dt){
+  floorSpawnTimer -= dt*16.6667;
+  if(floorSpawnTimer<=0){
+    floorSpawnTimer = FLOOR_INTERVAL/difficulty;
+    const empties = floorSlots.filter(s=>!s.item);
+    if(empties.length){
+      const s = pick(empties);
+      const isCentipede = Math.random()<Math.min(0.3, FLOOR_CENTIPEDE_CHANCE*difficulty);
+      s.item = isCentipede ? {type:'centipede'} : {type:'hair', value: FLOOR_HAIR_MIN+Math.floor(Math.random()*(FLOOR_HAIR_MAX-FLOOR_HAIR_MIN+1))};
+    }
+  }
+}
+function countHair(){ return floorSlots.filter(s=>s.item && s.item.type==='hair').length; }
+function checkHairGameOver(){
+  if(countHair()>=FLOOR_HAIR_GAMEOVER_THRESHOLD) triggerGameOver('hair');
+}
+function handleFloorClick(p){
+  for(const slot of floorSlots){
+    if(!slot.item) continue;
+    if(Math.hypot(p.x-slot.x, p.y-slot.y) < 32){
+      if(slot.item.type==='hair'){
+        addScore(slot.item.value);
+        stats.hairCollected++;
+        playHairSound();
+      } else {
+        addScore(FLOOR_CENTIPEDE_PENALTY);
+        stats.centipedeMistakes++;
+        inputFrozen=true; frozenTimer=FLOOR_FREEZE_MS;
+        playCentipedeSound();
+      }
+      slot.item=null;
+      return;
+    }
+  }
+}
+
+// ============================================================
+// ゲーム開始 / ゲームオーバー
+// ============================================================
+function startGame(){
+  resumeAudio();
+  score=0; survivalTime=0; difficulty=DIFF_LEVELS[0]; difficultyLevel=0; lastDifficultyLevel=0;
+  inputFrozen=false; frozenTimer=0;
+  scareTimer=0; pendingGameOver=false; gameOverReason='';
+  currentView='door'; viewLabelTimer=900;
+  stats.stainsCleaned=0; stats.bloodCleaned=0; stats.spidersKilled=0; stats.goldSpiders=0; stats.hairCollected=0; stats.centipedeMistakes=0;
+  initDoor(); initMirror(); initCeiling(); initFloor();
+  state='PLAYING';
+  startAmbient();
+}
+function triggerGameOver(reason){
+  if(pendingGameOver || state!=='PLAYING') return;
+  gameOverReason=reason;
+  scareTimer=1200;
+  pendingGameOver=true;
+  stopAmbient();
+  playScareSting();
+}
+
+// ============================================================
+// 更新
+// ============================================================
+function setView(v){
+  if(state!=='PLAYING' || inputFrozen) return;
+  if(currentView===v) return;
+  currentView=v;
+  viewLabelTimer=900;
+  playSwitchSound();
+}
+function updateAtmosphere(dt){
+  for(const p of bgParticles){ p.y+=p.vy*dt; if(p.y<-10) p.y=H+10; }
+}
+function update(dt){
+  if(state==='TITLE'){ updateAtmosphere(dt); return; }
+  if(state==='GAMEOVER'){ updateAtmosphere(dt); return; }
+  if(scareTimer>0){
+    scareTimer -= dt*16.6667;
+    if(scareTimer<=0 && pendingGameOver){
+      pendingGameOver=false; state='GAMEOVER'; playGameOverJingle();
+    }
+    return;
+  }
+  survivalTime += dt/60;
+  difficulty = computeDifficulty(survivalTime);
+  difficultyLevel = computeDifficultyLevel(survivalTime);
+  if(difficultyLevel > lastDifficultyLevel){
+    lastDifficultyLevel = difficultyLevel;
+    toast('危険度上昇 Lv.'+(difficultyLevel+1));
+    playLevelUpSound();
+  }
+  if(inputFrozen){ frozenTimer -= dt*16.6667; if(frozenTimer<=0) inputFrozen=false; }
+
+  updateDoorAlways(dt);
+  checkBloodGameOver();
+  if(scareTimer>0) return;
+
+  updateMirrorAlways(dt);
+  checkGhostGameOver();
+  if(scareTimer>0) return;
+
+  updateCeilingAlways(dt);
+  checkWebGameOver();
+  if(scareTimer>0) return;
+
+  updateFloorAlways(dt);
+  checkHairGameOver();
+  if(scareTimer>0) return;
+
+  if(currentView==='ceiling') updateCeilingActive(dt);
+  if(currentView==='mirror') updateMirrorGauge(dt);
+
+  if(viewLabelTimer>0) viewLabelTimer -= dt*16.6667;
+  if(toastTimer>0) toastTimer -= dt*16.6667;
+  if(exResultTimer>0) exResultTimer -= dt*16.6667;
+}
+
+// ============================================================
+// 描画: 各ゾーン
+// ============================================================
+function drawStainBlob(x,y,color,wet){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(-14,-4);
+  ctx.bezierCurveTo(-16,-14,-4,-18,4,-12);
+  ctx.bezierCurveTo(16,-8,14,6,6,12);
+  ctx.bezierCurveTo(-2,18,-16,10,-14,-4);
+  ctx.closePath(); ctx.fill();
+  if(wet){
+    ctx.fillStyle='rgba(180,220,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(-4,-4,6,4,0.4,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawHandprint(x,y,color,wet){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.ellipse(0,6,9,13,0,0,Math.PI*2); ctx.fill();
+  for(let i=0;i<5;i++){
+    const ang=-1.1+i*0.55;
+    const fx=Math.cos(ang)*13, fy=Math.sin(ang)*13-8;
+    ctx.beginPath(); ctx.ellipse(fx,fy,3.4,8,ang,0,Math.PI*2); ctx.fill();
+  }
+  if(wet){
+    ctx.fillStyle='rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.ellipse(0,4,7,9,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawProgressRing(x,y,ratio,color){
+  ctx.strokeStyle=color; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(x,y,22,-Math.PI/2,-Math.PI/2+ratio*Math.PI*2); ctx.stroke();
+}
+
+function drawDoorZone(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2a1c14'); g.addColorStop(1,'#160e0a');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#4a3120';
+  rr(210,90,540,400,10); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=3;
+  rr(240,120,220,150,4); ctx.stroke();
+  rr(500,120,220,150,4); ctx.stroke();
+  rr(240,290,220,150,4); ctx.stroke();
+  rr(500,290,220,150,4); ctx.stroke();
+  ctx.fillStyle='#c9a04a';
+  ctx.beginPath(); ctx.arc(700,300,7,0,Math.PI*2); ctx.fill();
+
+  for(const slot of doorSlots){
+    if(!slot.stain) continue;
+    const isBlood = slot.stain.type==='blood';
+    const baseColor = isBlood ? (slot.stain.wet?'#b3283a':'#6e1c26') : (slot.stain.wet?'#5a4530':'#3a2c1c');
+    if(isBlood) drawHandprint(slot.x, slot.y, baseColor, slot.stain.wet);
+    else drawStainBlob(slot.x, slot.y, baseColor, slot.stain.wet);
+    if(slot.stain.wet){
+      drawProgressRing(slot.x, slot.y, slot.stain.scrub/slot.stain.scrubNeeded, isBlood?'#ff8a8a':'#8ad1ff');
+    }
+  }
+}
+
+function drawMirrorZone(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1a1220'); g.addColorStop(1,'#0c0810');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle='#3a2c1c';
+  rr(330,60,300,340,14); ctx.fill();
+  const mg = ctx.createRadialGradient(480,220,20,480,220,220);
+  mg.addColorStop(0,'#141018'); mg.addColorStop(1,'#040305');
+  ctx.fillStyle=mg;
+  rr(350,80,260,300,8); ctx.fill();
+
+  const p = ghostProximity/100;
+  ctx.save();
+  ctx.beginPath(); rr(350,80,260,300,8); ctx.clip();
+  ctx.globalAlpha = 0.25+p*0.7;
+  ctx.translate(480, 90+p*160);
+  const scale = 0.35+p*1.1;
+  ctx.scale(scale, scale);
+  ctx.fillStyle='#8a1420';
+  ctx.beginPath();
+  ctx.moveTo(0,-10);
+  ctx.lineTo(-38,110); ctx.lineTo(38,110);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#e7d3c0';
+  ctx.beginPath(); ctx.arc(0,-30,22,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0c0810';
+  ctx.beginPath(); ctx.ellipse(0,-40,26,18,0,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1a1010';
+  ctx.beginPath(); ctx.arc(-8,-30,2.6,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(8,-30,2.6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha=1;
+
+  // ゲージ
+  const gx=230, gy=460, gw=500, gh=22;
+  ctx.fillStyle='rgba(0,0,0,0.4)'; rr(gx-6,gy-6,gw+12,gh+12,8); ctx.fill();
+  ctx.fillStyle='#241a2c'; rr(gx,gy,gw,gh,6); ctx.fill();
+  const cx = gx+gw/2;
+  ctx.fillStyle='rgba(255,209,102,0.28)'; rr(cx-gw*0.65/2*0.35,gy,gw*0.35,gh,4); ctx.fill();
+  ctx.fillStyle='rgba(255,140,80,0.35)'; rr(cx-gw*0.35/2*0.35,gy,gw*0.35*0.35*2/0.35*0.5,gh,4); ctx.fill();
+  ctx.fillStyle='rgba(255,209,102,0.28)'; rr(cx-gw*0.35/2,gy,gw*0.35,gh,4); ctx.fill();
+  ctx.fillStyle='rgba(255,140,80,0.4)'; rr(cx-gw*0.24/2,gy,gw*0.24,gh,4); ctx.fill();
+  ctx.fillStyle='rgba(255,80,80,0.55)'; rr(cx-gw*0.10/2,gy,gw*0.10,gh,4); ctx.fill();
+  const markerX = cx + mirrorMarkerPos*(gw/2-6);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.moveTo(markerX,gy-8); ctx.lineTo(markerX-7,gy-18); ctx.lineTo(markerX+7,gy-18); ctx.closePath(); ctx.fill();
+
+  ctx.font="10px 'Press Start 2P', monospace"; ctx.fillStyle='#eae6f5'; ctx.textAlign='center';
+  ctx.fillText('クリックでお祓い', cx, gy+gh+22);
+  ctx.textAlign='left';
+
+  if(exResultTimer>0){
+    ctx.globalAlpha = Math.min(1, exResultTimer/700);
+    const col = exResultText==='PERFECT'?'#ffd166':exResultText==='GREAT'?'#ff9d4d':exResultText==='GOOD'?'#8ad1ff':'#888';
+    ctx.font="16px 'Press Start 2P', monospace"; ctx.fillStyle=col; ctx.textAlign='center';
+    ctx.fillText(exResultText, cx, gy-40);
+    ctx.textAlign='left'; ctx.globalAlpha=1;
+  }
+}
+
+function drawSpiderShape(x,y,size,golden,t){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = golden ? '#ffd166' : '#1c1610';
+  ctx.beginPath(); ctx.ellipse(0,0,size,size*0.75,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = golden ? '#ffe9a8' : '#3a2c1c'; ctx.lineWidth=2;
+  for(let i=0;i<4;i++){
+    const wig = Math.sin(t/90+i)*6;
+    ctx.beginPath(); ctx.moveTo(-size*0.3,-size*0.2+i*4);
+    ctx.lineTo(-size*1.6,-size*0.6+i*7+wig); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(size*0.3,-size*0.2+i*4);
+    ctx.lineTo(size*1.6,-size*0.6+i*7-wig); ctx.stroke();
+  }
+  if(golden){
+    ctx.fillStyle='rgba(255,230,150,0.5)';
+    for(let i=0;i<4;i++){
+      const a=t/300+i*1.6;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*size*1.4, Math.sin(a)*size*1.4, 2.2, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+function drawCeilingZone(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2c241c'); g.addColorStop(1,'#171310');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=2;
+  for(let i=0;i<5;i++){ ctx.beginPath(); ctx.moveTo(0,80+i*70); ctx.lineTo(W,80+i*70-30); ctx.stroke(); }
+
+  for(const slot of webSlots){
+    if(!slot.active) continue;
+    const remain = 1-(slot.progress/CEIL_WEB_SWEEP_NEEDED);
+    ctx.strokeStyle=`rgba(220,220,220,${0.3+remain*0.5})`;
+    ctx.lineWidth=1.4;
+    for(let i=0;i<6;i++){
+      const ang=i/6*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(slot.x,slot.y);
+      ctx.lineTo(slot.x+Math.cos(ang)*30*remain, slot.y+Math.sin(ang)*30*remain);
+      ctx.stroke();
+    }
+    for(let ring=1;ring<=2;ring++){
+      ctx.beginPath();
+      for(let i=0;i<=6;i++){
+        const ang=i/6*Math.PI*2;
+        const rad=ring*10*remain;
+        const px=slot.x+Math.cos(ang)*rad, py=slot.y+Math.sin(ang)*rad;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+    }
+  }
+  if(spider){
+    const t=performance.now();
+    drawSpiderShape(spider.x, spider.y, 12, spider.isGolden, t);
+    ctx.font="11px 'Press Start 2P', monospace";
+    ctx.fillStyle = spider.isGolden?'#ffd166':'#ff6b6b';
+    ctx.textAlign='center';
+    ctx.save();
+    ctx.globalAlpha = 0.6+0.4*Math.sin(t/100);
+    ctx.fillText('叩け!!', spider.x, spider.y-30);
+    ctx.restore();
+    ctx.textAlign='left';
+  }
+}
+
+function drawHairStrand(x,y,seed){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(seed);
+  ctx.strokeStyle='#120d09'; ctx.lineWidth=1.8; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(-16,0);
+  ctx.quadraticCurveTo(-4,-8,6,2);
+  ctx.quadraticCurveTo(14,8,18,-4);
+  ctx.stroke();
+  ctx.restore();
+}
+function drawCentipede(x,y,wig){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(Math.sin(wig)*0.2);
+  ctx.fillStyle='#5a2a20';
+  for(let i=-3;i<=3;i++){
+    ctx.beginPath(); ctx.ellipse(i*5,Math.sin(i+wig)*1.5,3.2,2.2,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.strokeStyle='#3a1a14'; ctx.lineWidth=1;
+  for(let i=-3;i<=3;i++){
+    ctx.beginPath(); ctx.moveTo(i*5,0); ctx.lineTo(i*5-3,5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i*5,0); ctx.lineTo(i*5+3,5); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawFloorZone(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#40444a'); g.addColorStop(1,'#25272c');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,0,0,0.28)'; ctx.lineWidth=1.5;
+  for(let x=0;x<=W;x+=80){ ctx.beginPath(); ctx.moveTo(x,80); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=80;y<=H;y+=80){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const t=performance.now()/500;
+  for(const slot of floorSlots){
+    if(!slot.item) continue;
+    if(slot.item.type==='hair') drawHairStrand(slot.x, slot.y, slot.wig);
+    else drawCentipede(slot.x, slot.y, t+slot.wig);
+  }
+}
+
+// ============================================================
+// HUD & オーバーレイ
+// ============================================================
+function centerText(text,y,size,color){
+  ctx.font=size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=color; ctx.textAlign='center';
+  ctx.fillText(text, W/2, y);
+  ctx.textAlign='left';
+}
+function drawDust(){
+  for(const p of bgParticles){
+    ctx.globalAlpha=p.a; ctx.fillStyle='#e0d5c8';
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawGlobalHUD(){
+  ctx.font="10px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(10,6,8,0.62)'; ctx.fillRect(0,0,W,54);
+  ctx.fillStyle='#ffd166';
+  ctx.fillText('SCORE '+String(score).padStart(6,'0'), 14, 21);
+  const mm=String(Math.floor(survivalTime/60)).padStart(2,'0');
+  const ss=String(Math.floor(survivalTime%60)).padStart(2,'0');
+  ctx.fillStyle='#eae6f5';
+  ctx.textAlign='center';
+  ctx.fillText(mm+':'+ss, W/2, 21);
+  ctx.fillStyle='#ff9d4d';
+  ctx.font="8px 'Press Start 2P', monospace";
+  ctx.fillText('Lv.'+(difficultyLevel+1)+'/'+DIFF_LEVELS.length, W/2, 34);
+  ctx.font="10px 'Press Start 2P', monospace";
+  ctx.textAlign='left';
+
+  const barX=W-140, barY=10, barW=126, barH=10;
+  ctx.fillStyle='#2a1c22'; ctx.fillRect(barX,barY,barW,barH);
+  const gp = ghostProximity/100;
+  ctx.fillStyle = gp>0.7?'#ff5c5c':(gp>0.4?'#ffb066':'#8ad1ff');
+  ctx.fillRect(barX,barY,barW*gp,barH);
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(barX,barY,barW,barH);
+  ctx.font="8px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(234,230,245,0.6)';
+  ctx.fillText('鏡の女', barX, barY-3);
+
+  ctx.font="9px 'Press Start 2P', monospace";
+  const bloodN = countBlood();
+  ctx.fillStyle = bloodN>=2 ? '#ff5c5c' : (bloodN===1?'#ffb066':'#eae6f5');
+  ctx.fillText('血 '+bloodN+'/3', 20, 46);
+
+  const webN = countActiveWebs();
+  ctx.fillStyle = webN>=CEIL_WEB_GAMEOVER_THRESHOLD-1 ? '#ff5c5c' : (webN>=2?'#ffb066':'#eae6f5');
+  ctx.fillText('巣 '+webN+'/'+CEIL_WEB_GAMEOVER_THRESHOLD, 140, 46);
+
+  const hairN = countHair();
+  ctx.fillStyle = hairN>=FLOOR_HAIR_GAMEOVER_THRESHOLD-1 ? '#ff5c5c' : (hairN>=3?'#ffb066':'#eae6f5');
+  ctx.fillText('髪 '+hairN+'/'+FLOOR_HAIR_GAMEOVER_THRESHOLD, 270, 46);
+}
+
+function drawViewLabel(){
+  const names = {door:'浴室ドア', mirror:'浴室鏡', ceiling:'浴室天井', floor:'浴室床'};
+  ctx.globalAlpha = Math.min(1, viewLabelTimer/300);
+  centerText(names[currentView], 90, 16, '#eae6f5');
+  ctx.globalAlpha=1;
+}
+
+function drawToast(){
+  if(toastTimer<=0) return;
+  ctx.globalAlpha = Math.min(1, toastTimer/1300);
+  ctx.font="10px 'Press Start 2P', monospace";
+  const tw = ctx.measureText(toastText).width+26;
+  ctx.fillStyle='rgba(10,6,8,0.75)';
+  rr(W/2-tw/2, H-58, tw, 30, 6); ctx.fill();
+  ctx.fillStyle='#ffd166'; ctx.textAlign='center';
+  ctx.fillText(toastText, W/2, H-38);
+  ctx.textAlign='left'; ctx.globalAlpha=1;
+}
+
+function drawFreezeOverlay(){
+  ctx.fillStyle='rgba(90,20,20,0.35)';
+  ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.globalAlpha=0.7+0.3*Math.sin(performance.now()/80);
+  centerText('うごけない…', H/2, 18, '#ff8a8a');
+  ctx.restore();
+}
+
+function drawScareOverlay(){
+  const p=1-scareTimer/1200;
+  ctx.fillStyle = p<0.15 ? 'rgba(255,255,255,0.85)' : 'rgba(120,0,10,0.45)';
+  ctx.fillRect(0,0,W,H);
+  const s=1+(p<0.3?(0.3-p)*2:0);
+  ctx.save();
+  ctx.translate(W/2,H/2);
+  ctx.scale(s,s);
+  if(gameOverReason==='ghost'){
+    ctx.fillStyle='#7a1018';
+    ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(-70,150); ctx.lineTo(70,150); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#e7d3c0';
+    ctx.beginPath(); ctx.arc(0,-50,34,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#0c0810';
+    ctx.beginPath(); ctx.arc(-12,-50,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(12,-50,4,0,Math.PI*2); ctx.fill();
+  } else if(gameOverReason==='web'){
+    ctx.strokeStyle='rgba(230,230,230,0.8)'; ctx.lineWidth=2;
+    for(let i=0;i<10;i++){
+      const ang=i/10*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(ang)*260, Math.sin(ang)*260); ctx.stroke();
+    }
+    for(let ring=1;ring<=4;ring++){
+      ctx.beginPath();
+      for(let i=0;i<=10;i++){
+        const ang=i/10*Math.PI*2, rad=ring*55;
+        const px=Math.cos(ang)*rad, py=Math.sin(ang)*rad;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+    }
+    const spots=[[-90,-60],[100,-30],[-40,90],[60,70],[0,-140]];
+    for(const [sx,sy] of spots){
+      ctx.save(); ctx.translate(sx,sy);
+      ctx.fillStyle='#0c0a08';
+      ctx.beginPath(); ctx.ellipse(0,0,16,12,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  } else if(gameOverReason==='hair'){
+    ctx.strokeStyle='#0c0906'; ctx.lineWidth=3; ctx.lineCap='round';
+    for(let i=0;i<26;i++){
+      const ang = i/26*Math.PI*2;
+      const len = 180+Math.sin(i*3.1)*40;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(ang)*len, Math.sin(ang)*len);
+      ctx.quadraticCurveTo(Math.cos(ang+0.3)*len*0.5, Math.sin(ang+0.3)*len*0.5, 0,0);
+      ctx.stroke();
+    }
+    ctx.fillStyle='#e7d3c0';
+    ctx.beginPath(); ctx.arc(-14,0,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(14,0,3,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillStyle='#050505';
+    ctx.beginPath(); ctx.ellipse(0,20,140,170,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ff5c5c';
+    ctx.beginPath(); ctx.arc(-38,-10,9,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(38,-10,9,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawTitleScreen(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1c1012'); g.addColorStop(1,'#0a0607');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('浴室清掃員の夜勤', H*0.3, 22, '#c94b4b');
+  centerText('- SCRUB TILL DAWN -', H*0.3+28, 11, '#9b93b8');
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP', H*0.6, 12, '#ffd166');
+  ctx.restore();
+  centerText('4つの異変に同時対応しながら夜を生き延びろ', H*0.7, 10, '#9b93b8');
+  centerText('血の手形3つ・鏡の女・蜘蛛の巣・髪の毛の放置で即ゲームオーバー', H*0.76, 8, '#9b93b8');
+}
+
+function drawGameOverScreen(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1c1012'); g.addColorStop(1,'#0a0607');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  drawDust();
+  centerText('GAME OVER', H*0.24, 24, '#ff5c5c');
+  const reasonMap = {
+    ghost: '鏡の女に追いつかれた…',
+    blood: '血の手形があふれた…',
+    web: '蜘蛛の大群に襲われた…',
+    hair: '髪の毛に飲み込まれた…'
+  };
+  const reasonText = reasonMap[gameOverReason] || '何かに襲われた…';
+  centerText(reasonText, H*0.24+30, 11, '#eae6f5');
+
+  const mm=String(Math.floor(survivalTime/60)).padStart(2,'0');
+  const ss=String(Math.floor(survivalTime%60)).padStart(2,'0');
+  centerText('SCORE '+String(score).padStart(6,'0'), H*0.24+64, 14, '#ffd166');
+  centerText('生存時間 '+mm+':'+ss, H*0.24+90, 10, '#9b93b8');
+  centerText('汚れ '+stats.stainsCleaned+'　血の手形 '+stats.bloodCleaned+'　クモ '+stats.spidersKilled+'(金'+stats.goldSpiders+')', H*0.24+112, 8, '#9b93b8');
+  centerText('髪 '+stats.hairCollected+'本　ムカデ失敗 '+stats.centipedeMistakes+'回', H*0.24+128, 8, '#9b93b8');
+
+  ctx.save();
+  ctx.globalAlpha=0.55+0.45*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.86, 10, '#ffd166');
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='TITLE'){ drawTitleScreen(); return; }
+  if(state==='GAMEOVER'){ drawGameOverScreen(); return; }
+
+  if(currentView==='door') drawDoorZone();
+  else if(currentView==='mirror') drawMirrorZone();
+  else if(currentView==='ceiling') drawCeilingZone();
+  else drawFloorZone();
+
+  drawGlobalHUD();
+  if(viewLabelTimer>0) drawViewLabel();
+  drawToast();
+  if(inputFrozen) drawFreezeOverlay();
+  if(scareTimer>0) drawScareOverlay();
+}
+
+// ============================================================
+// オーディオエンジン
+// ============================================================
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
+function ensureAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:1;
+  musicGain=audioCtx.createGain(); musicGain.gain.value=0.22;
+  sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.55;
+  musicGain.connect(masterGain); sfxGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+}
+function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+
+const NOTE = { C3:130.81, D3:146.83, F3:174.61, G3:196.00, A3:220.00, C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00, C5:523.25 };
+
+function playNoiseBurst(duration,vol,fStart,fEnd,dest){
+  if(!audioCtx) return;
+  const bufferSize=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='bandpass';
+  const t0=audioCtx.currentTime;
+  filter.frequency.setValueAtTime(fStart,t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(50,fEnd), t0+duration);
+  const gain=audioCtx.createGain();
+  gain.gain.setValueAtTime(vol,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+duration);
+  src.connect(filter); filter.connect(gain); gain.connect(dest);
+  src.start(t0); src.stop(t0+duration+0.02);
+}
+function playNoteAt(freq,time,dur,type,vol,dest){
+  if(!audioCtx) return;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,time);
+  gain.gain.setValueAtTime(0,time);
+  gain.gain.linearRampToValueAtTime(vol,time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+  osc.connect(gain); gain.connect(dest);
+  osc.start(time); osc.stop(time+dur+0.05);
+}
+
+let droneOsc1=null, droneOsc2=null, droneLFO=null, dronePlaying=false;
+function startAmbient(){
+  resumeAudio(); if(!audioCtx || dronePlaying) return;
+  dronePlaying=true;
+  const droneGain=audioCtx.createGain(); droneGain.gain.value=0.13;
+  const droneFilter=audioCtx.createBiquadFilter(); droneFilter.type='lowpass'; droneFilter.frequency.value=340;
+  droneOsc1=audioCtx.createOscillator(); droneOsc1.type='sawtooth'; droneOsc1.frequency.value=50;
+  droneOsc2=audioCtx.createOscillator(); droneOsc2.type='sawtooth'; droneOsc2.frequency.value=53.5;
+  const lfo=audioCtx.createOscillator(); lfo.frequency.value=0.05;
+  const lfoGain=audioCtx.createGain(); lfoGain.gain.value=80;
+  lfo.connect(lfoGain); lfoGain.connect(droneFilter.frequency);
+  droneOsc1.connect(droneFilter); droneOsc2.connect(droneFilter);
+  droneFilter.connect(droneGain); droneGain.connect(musicGain);
+  droneOsc1.start(); droneOsc2.start(); lfo.start();
+  droneLFO=lfo;
+}
+function stopAmbient(){
+  if(!dronePlaying) return;
+  dronePlaying=false;
+  try{ droneOsc1.stop(); droneOsc2.stop(); droneLFO.stop(); }catch(e){}
+}
+
+let heartbeatActive=false;
+function computeDanger(){
+  const bloodDanger = countBlood()/3;
+  const ghostDanger = ghostProximity/100;
+  return Math.max(bloodDanger, ghostDanger);
+}
+function playHeartThump(vol){
+  if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine';
+  osc.frequency.setValueAtTime(65,t0); osc.frequency.exponentialRampToValueAtTime(32,t0+0.13);
+  gain.gain.setValueAtTime(vol,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.16);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.18);
+}
+function scheduleHeartbeat(){
+  if(!heartbeatActive) return;
+  const danger = state==='PLAYING' ? computeDanger() : 0;
+  const interval = 950-danger*600;
+  if(danger>0.15) playHeartThump(0.08+danger*0.24);
+  setTimeout(scheduleHeartbeat, interval);
+}
+heartbeatActive=true; scheduleHeartbeat();
+
+function playWaterSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.16,0.14,2200,500,sfxGain);
+}
+function playScrubSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.08,0.16,1800,900,sfxGain);
+}
+function playCleanSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['C4',0],['E4',0.08]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.16, 'square', 0.2, sfxGain));
+}
+function playBloodOverwriteSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.18,0.18,700,150,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(140,t0); osc.frequency.exponentialRampToValueAtTime(70,t0+0.2);
+  gain.gain.setValueAtTime(0.16,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.22);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.24);
+}
+function playBloodCleanJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['C4',0],['E4',0.09],['G4',0.18],['C5',0.3]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.22, 'square', 0.24, sfxGain));
+}
+function playExorcismSound(quality){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  if(quality==='perfect') [['C5',0],['E4',0.06]].forEach(([n,o])=>playNoteAt(NOTE[n],t0+o,0.22,'square',0.3,sfxGain));
+  else if(quality==='great') playNoteAt(NOTE.G4,t0,0.18,'square',0.24,sfxGain);
+  else if(quality==='good') playNoteAt(NOTE.D4,t0,0.15,'triangle',0.2,sfxGain);
+  else playNoiseBurst(0.1,0.12,600,300,sfxGain);
+}
+function playSweepSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.07,0.1,3000,1200,sfxGain);
+}
+function playSpiderHitSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.12,0.24,900,150,sfxGain);
+}
+function playGoldFanfare(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['C4',0],['E4',0.08],['G4',0.16],['C5',0.24],['G4',0.34],['C5',0.42]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.24, 'square', 0.3, sfxGain));
+}
+function playHairSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  playNoteAt(880, t0, 0.08, 'sine', 0.16, sfxGain);
+}
+function playCentipedeSound(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.4,0.32,1400,80,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(180,t0); osc.frequency.exponentialRampToValueAtTime(60,t0+0.35);
+  gain.gain.setValueAtTime(0.26,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.4);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.42);
+}
+function playLevelUpSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['D4',0],['G4',0.09],['C5',0.18]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.2, 'square', 0.2, sfxGain));
+}
+function playSwitchSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.setValueAtTime(300,t0);
+  gain.gain.setValueAtTime(0.08,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.06);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.08);
+}
+function playScareSting(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.5,0.4,3000,120,sfxGain);
+  const t0=audioCtx.currentTime;
+  [[180,0],[233,0.02],[311,0.04]].forEach(([f,o])=>{
+    const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.setValueAtTime(f,t0+o);
+    g.gain.setValueAtTime(0.001,t0+o); g.gain.linearRampToValueAtTime(0.35,t0+o+0.02); g.gain.exponentialRampToValueAtTime(0.001,t0+o+0.6);
+    osc.connect(g); g.connect(sfxGain);
+    osc.start(t0+o); osc.stop(t0+o+0.65);
+  });
+}
+function playGameOverJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [['A3',0],['F3',0.2],['D3',0.4],['C3',0.62]].forEach(([n,o])=>playNoteAt(NOTE[n], t0+o, 0.4, 'sawtooth', 0.22, sfxGain));
+}
+
+const btnMute=document.getElementById('btn-mute');
+btnMute.addEventListener('click', ()=>{
+  ensureAudio();
+  muted=!muted;
+  if(masterGain) masterGain.gain.value = muted?0:1;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// 入力
+// ============================================================
+function handleConfirmKey(){
+  if(state==='TITLE' || state==='GAMEOVER') startGame();
+}
+window.addEventListener('keydown',(e)=>{
+  if(['Enter','Space'].includes(e.code)){ handleConfirmKey(); e.preventDefault(); }
+  if(['ArrowLeft','KeyA'].includes(e.code)) setView('door');
+  if(['ArrowRight','KeyD'].includes(e.code)) setView('mirror');
+  if(['ArrowUp','KeyW'].includes(e.code)) setView('ceiling');
+  if(['ArrowDown','KeyS'].includes(e.code)) setView('floor');
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+
+function bindTap(el, fn){
+  el.addEventListener('pointerdown', (e)=>{ e.preventDefault(); fn(); });
+}
+bindTap(document.getElementById('dp-left'), ()=>setView('door'));
+bindTap(document.getElementById('dp-right'), ()=>setView('mirror'));
+bindTap(document.getElementById('dp-up'), ()=>setView('ceiling'));
+bindTap(document.getElementById('dp-down'), ()=>setView('floor'));
+
+function getCanvasPos(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W/rect.width, scaleY = H/rect.height;
+  return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
+}
+canvas.addEventListener('click', (e)=>{
+  if(state==='TITLE' || state==='GAMEOVER'){ startGame(); return; }
+  if(state!=='PLAYING' || inputFrozen || scareTimer>0) return;
+  const p = getCanvasPos(e.clientX, e.clientY);
+  if(currentView==='door') handleDoorClick(p);
+  else if(currentView==='mirror') handleMirrorClick();
+  else if(currentView==='ceiling') handleCeilingClick(p);
+  else handleFloorClick(p);
+});
+
+// ============================================================
+// ループ
+// ============================================================
+let lastTime=null;
+function loop(ts){
+  if(lastTime===null) lastTime=ts;
+  let deltaMs=ts-lastTime; lastTime=ts;
+  if(deltaMs>100) deltaMs=100;
+  const dt=deltaMs/16.6667;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
