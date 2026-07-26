@@ -240,6 +240,7 @@ let totalNotesFound = 0;
 let totalCatches = 0;
 let pendingGameOver = false;
 let runStartTime = 0;
+let finalSurvivalSec = 0;
 
 let keyState = { left:false, right:false, up:false, down:false, breath:false };
 let touchState = { left:false, right:false, up:false, down:false, breath:false };
@@ -449,6 +450,7 @@ function advanceChapter(){
     loadChapter(chapterIdx+1);
   } else {
     state='ENDING';
+    finalSurvivalSec = Math.floor((performance.now()-runStartTime)/1000);
     stopAmbient();
     heartbeatActive=false;
     playEndingJingle();
@@ -686,6 +688,7 @@ function update(dt){
     if(scareTimer<=0 && pendingGameOver){
       pendingGameOver=false;
       state='GAMEOVER';
+      finalSurvivalSec = Math.floor((performance.now()-runStartTime)/1000);
       stopAmbient();
       heartbeatActive=false;
       playGameOverJingle();
@@ -966,7 +969,7 @@ function drawEndingOverlay(){
   drawDust();
   centerText('生還', H*0.3, 26, '#e8d98a');
   centerText('あなたは灯りを頼りに屋敷を抜け出した', H*0.3+30, 10, '#eae6f5');
-  const elapsed=Math.floor((performance.now()-runStartTime)/1000);
+  const elapsed=finalSurvivalSec;
   const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
   const ss=String(elapsed%60).padStart(2,'0');
   centerText('生存時間 '+mm+':'+ss, H*0.3+58, 10, '#9b93b8');
@@ -984,7 +987,7 @@ function drawGameOverOverlay(){
   drawDust();
   centerText('GAME OVER', H*0.32, 26, '#ff5c4d');
   centerText('灯りが届く前に、闇に飲まれた', H*0.32+30, 10, '#eae6f5');
-  const elapsed=Math.floor((performance.now()-runStartTime)/1000);
+  const elapsed=finalSurvivalSec;
   const mm2=String(Math.floor(elapsed/60)).padStart(2,'0');
   const ss2=String(elapsed%60).padStart(2,'0');
   centerText('到達 '+(chapterCfg?chapterCfg.name:''), H*0.32+58, 10, '#9b93b8');
