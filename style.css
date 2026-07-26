@@ -2,20 +2,20 @@
    BLADE QUEST サイト共通スタイル
    ============================================================ */
 :root{
-  --bg:#0a0812;
-  --panel:#161225;
-  --panel2:#1c1830;
-  --line:#241f3a;
+  --bg:#211d2e;
+  --panel:#2d2842;
+  --panel2:#362f4d;
+  --line:#4a4165;
   --cyan:#4ce0d2;
-  --magenta:#ff4d8d;
+  --magenta:#ff6b9d;
   --gold:#ffd166;
-  --text:#eae6f5;
-  --sub:#9b93b8;
+  --text:#f5f2fa;
+  --sub:#bab0d6;
 }
 *{box-sizing:border-box;}
 html,body{
   margin:0;padding:0;
-  background:radial-gradient(ellipse at 50% -10%, #201a3a 0%, var(--bg) 55%);
+  background:radial-gradient(ellipse at 50% -10%, #362f4d 0%, var(--bg) 55%);
   color:var(--text);
   font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
   line-height:1.85;
@@ -63,13 +63,13 @@ a:hover{ text-decoration:underline; }
 .site-main h3{
   font-size:15px;color:var(--gold);margin:22px 0 8px;
 }
-.site-main p{ margin:12px 0; color:#d8d4ea; }
-.site-main ul, .site-main ol{ padding-left:22px; color:#d8d4ea; }
+.site-main p{ margin:12px 0; color:#e4dff2; }
+.site-main ul, .site-main ol{ padding-left:22px; color:#e4dff2; }
 .site-main li{ margin:6px 0; }
 .lead{
   font-size:15.5px;color:var(--sub);
   border-left:3px solid var(--magenta);
-  padding:10px 16px;background:rgba(255,77,141,0.06);
+  padding:10px 16px;background:rgba(255,107,157,0.09);
   border-radius:0 8px 8px 0;
 }
 .card{
