@@ -139,9 +139,9 @@ function rr(x,y,w,h,r){
   ctx.closePath();
 }
 
-const BASE_REACTION_MS = 1600;
+const BASE_REACTION_MS = 2200;
 const MIN_REACTION_MS = 550;
-const REACTION_DECREMENT = 28;
+const REACTION_DECREMENT = 40;
 const ROUND_PAUSE_MS = 300;
 const COMPOUND_UNLOCK_ROUND = 8;
 const CORRECTION_UNLOCK_ROUND = 15;
@@ -284,7 +284,6 @@ function updateBeatClock(dt, rounds){
   if(idx!==lastBeatIndex){
     lastBeatIndex=idx;
     metroPulse=1;
-    playTick(idx%4===0);
   } else {
     metroPulse = Math.max(0, metroPulse-dt*0.09);
   }
@@ -503,15 +502,6 @@ function stopAmbient(){
   if(!dronePlaying) return;
   dronePlaying=false;
   try{ droneOsc.stop(); }catch(e){}
-}
-function playTick(accent){
-  ensureAudio(); if(!audioCtx) return;
-  const t0=audioCtx.currentTime;
-  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
-  osc.type='square'; osc.frequency.setValueAtTime(accent?1200:800,t0);
-  gain.gain.setValueAtTime(accent?0.12:0.07,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.05);
-  osc.connect(gain); gain.connect(musicGain);
-  osc.start(t0); osc.stop(t0+0.06);
 }
 function playToggleSound(){
   ensureAudio(); if(!audioCtx) return;
