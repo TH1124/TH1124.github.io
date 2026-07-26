@@ -5,8 +5,8 @@
      crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>旗上げビート -DON'T MISS A BEAT-</title>
-<meta name="description" content="無料で遊べるブラウザ用反射神経ゲーム「旗上げビート」。白旗・赤旗を指示通りに上げ下げする、だんだん加速するサバイバル型の旗上げゲーム。フェイントの指示に引っかからず、どこまで生き残れるか。">
+<title>旗揚げ</title>
+<meta name="description" content="無料で遊べるブラウザ用反射神経ゲーム「旗揚げ」。白旗・赤旗を指示通りに上げ下げする、だんだん加速するサバイバル型の旗揚げゲーム。フェイントの指示に引っかからず、どこまで生き残れるか。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -79,8 +79,7 @@
 </header>
 
 <div id="game-page">
-  <h1 class="game-title">旗上げビート</h1>
-  <div class="game-subtitle">- DON'T MISS A BEAT -</div>
+  <h1 class="game-title">旗揚げ</h1>
 
   <div id="game-wrap">
     <canvas id="hcanvas" width="960" height="540"></canvas>
@@ -98,7 +97,7 @@
 
   <div style="max-width:640px;text-align:center;">
     <p style="font-size:13px;color:var(--sub);line-height:1.9;">
-      「旗上げビート」は指示通りに旗を上げ下げする、だんだん加速するサバイバル型の旗上げゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+      「旗揚げ」は指示通りに旗を上げ下げする、だんだん加速するサバイバル型の旗揚げゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
     </p>
   </div>
 </div>
@@ -434,8 +433,7 @@ function drawMissFlash(){
 }
 function drawTitleScreen(){
   drawBackground();
-  centerText('旗上げビート', H*0.28, 24, '#e63946');
-  centerText('- DON\'T MISS A BEAT -', H*0.28+30, 10, '#5a4632');
+  centerText('旗揚げ', H*0.3, 30, '#e63946');
   ctx.save();
   ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
   centerText('press ENTER / SPACE / TAP', H*0.56, 12, '#2b2118');
@@ -489,19 +487,46 @@ function ensureAudio(){
 }
 function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
 
-let droneOsc=null, dronePlaying=false;
+const NOTE = {
+  C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
+  C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88, C5:523.25
+};
+function playNoteAt(freq,time,dur,type,vol,dest){
+  if(!audioCtx) return;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,time);
+  gain.gain.setValueAtTime(0,time);
+  gain.gain.linearRampToValueAtTime(vol,time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+  osc.connect(gain); gain.connect(dest);
+  osc.start(time); osc.stop(time+dur+0.05);
+}
+const BGM_BPM = 132;
+const BGM_BASS  = ['C3',0,'C3',0,'G3',0,'G3',0,'A3',0,'A3',0,'F3',0,'F3',0];
+const BGM_LEAD  = [0,'E4',0,'G4', 0,'D4',0,'G4', 0,'E4',0,'C5', 0,'C4',0,'A4'];
+let bgmStep=0, bgmNextTime=0, bgmTimer=null, bgmPlaying=false;
+function bgmStepSeconds(){ return 60.0/BGM_BPM/2; }
+function scheduleBgmStep(step,time){
+  const b=BGM_BASS[step];
+  if(b) playNoteAt(NOTE[b], time, bgmStepSeconds()*1.7, 'triangle', 0.16, musicGain);
+  const l=BGM_LEAD[step];
+  if(l) playNoteAt(NOTE[l], time, bgmStepSeconds()*0.85, 'square', 0.10, musicGain);
+}
+function bgmTick(){
+  while(bgmNextTime < audioCtx.currentTime+0.12){
+    scheduleBgmStep(bgmStep, bgmNextTime);
+    bgmNextTime += bgmStepSeconds();
+    bgmStep=(bgmStep+1)%BGM_BASS.length;
+  }
+}
 function startAmbient(){
-  resumeAudio(); if(!audioCtx || dronePlaying) return;
-  dronePlaying=true;
-  const g=audioCtx.createGain(); g.gain.value=0.05;
-  droneOsc=audioCtx.createOscillator(); droneOsc.type='sine'; droneOsc.frequency.value=220;
-  droneOsc.connect(g); g.connect(musicGain);
-  droneOsc.start();
+  resumeAudio(); if(!audioCtx || bgmPlaying) return;
+  bgmPlaying=true; bgmStep=0; bgmNextTime=audioCtx.currentTime+0.05;
+  bgmTimer=setInterval(bgmTick, 30);
 }
 function stopAmbient(){
-  if(!dronePlaying) return;
-  dronePlaying=false;
-  try{ droneOsc.stop(); }catch(e){}
+  bgmPlaying=false;
+  if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; }
 }
 function playToggleSound(){
   ensureAudio(); if(!audioCtx) return;
