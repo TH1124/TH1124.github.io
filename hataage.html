@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4115378240812746"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>旗上げビート -DON'T MISS A BEAT-</title>
+<meta name="description" content="無料で遊べるブラウザ用リズムゲーム「旗上げビート」。テンポ120のビートに合わせて白旗・赤旗を上げ下げし、途中からはパンを食べたり一句詠んだりする指示もこなす、4段階の旗上げゲーム。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #game-page{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 14px 30px; }
+  #game-page h1.game-title{
+    font-family:'Press Start 2P', monospace; font-size:clamp(15px,3.2vw,24px);
+    color:#e63946; text-shadow:0 0 10px rgba(230,57,70,0.35), 0 3px 0 #fff5;
+    letter-spacing:1px; margin:10px 0 -6px; text-align:center;
+  }
+  #game-page .game-subtitle{ font-family:'Press Start 2P', monospace; font-size:10px; color:var(--sub); }
+  #game-wrap{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9;
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 0 0 2px #ffb703, 0 0 40px rgba(255,183,3,0.18), 0 20px 50px rgba(0,0,0,0.35);
+    background:#eaf4fb;
+  }
+  #hcanvas{ width:100%; height:100%; display:block; }
+  #btn-mute{
+    position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(43,33,24,0.3);background:rgba(255,255,255,0.75);color:#2b2118;
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #haiku-wrap{
+    position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
+    width:80%; max-width:560px; display:none; z-index:8; text-align:center;
+  }
+  #haiku-input{
+    width:100%; box-sizing:border-box; font-size:18px; padding:10px 14px;
+    border-radius:8px; border:2px solid #ffb703; outline:none;
+    font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+    text-align:center;
+  }
+  #touch-controls{ position:absolute; inset:0; display:none; pointer-events:none; }
+  .flag-btn{
+    position:absolute; bottom:14px; width:110px; height:52px; border-radius:10px;
+    font-family:'Press Start 2P', monospace; font-size:12px;
+    border:2px solid rgba(43,33,24,0.35); pointer-events:auto;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #btn-white-flag{ left:14px; background:rgba(255,255,255,0.85); color:#2b2118; }
+  #btn-red-flag{ right:14px; background:rgba(230,57,70,0.85); color:#fff; }
+  .flag-btn:active{ filter:brightness(0.9); }
+  @media (pointer:coarse){ #touch-controls{ display:block; } }
+  .hint2{
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif; font-size:12.5px;
+    color:var(--sub); text-align:center; line-height:1.7; max-width:660px;
+  }
+  .hint2 b{ color:#e63946; }
+  .rotate-hint2{
+    display:none; position:fixed; inset:0; background:var(--bg); color:var(--text); z-index:50;
+    flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace; font-size:13px; text-align:center; gap:16px; padding:20px;
+  }
+  @media (max-width:760px) and (orientation:portrait){
+    .rotate-hint2{ display:flex; }
+    #game-page{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rotate-hint2">
+  <div>📱 ⟳</div>
+  <div>端末を横向きにしてください</div>
+  <div style="font-size:9px;color:#9b93b8;">ROTATE YOUR DEVICE</div>
+</div>
+
+<header class="site-header">
+  <a class="site-title" href="index.html">Mr.ONLINE</a>
+  <nav class="site-nav">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </nav>
+</header>
+
+<div id="game-page">
+  <h1 class="game-title">旗上げビート</h1>
+  <div class="game-subtitle">- DON'T MISS A BEAT -</div>
+
+  <div id="game-wrap">
+    <canvas id="hcanvas" width="960" height="540"></canvas>
+    <button id="btn-mute" title="音を消す/戻す">🔊</button>
+    <div id="haiku-wrap">
+      <input id="haiku-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <div id="touch-controls">
+      <button id="btn-white-flag" class="flag-btn">白</button>
+      <button id="btn-red-flag" class="flag-btn">赤</button>
+    </div>
+  </div>
+
+  <div class="hint2">
+    白旗操作 <b>← / A</b>&nbsp;&nbsp;赤旗操作 <b>→ / D</b>&nbsp;&nbsp;パンを食べる/決定 <b>クリック・タップ / Space</b><br>
+    テンポに合わせて指示通りに旗を上げ下げしよう。指示に従えないと即ゲームオーバー。全4レベルクリアを目指せ。
+  </div>
+
+  <div style="max-width:640px;text-align:center;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「旗上げビート」はテンポ120のビートに合わせて遊ぶ、少し変わった旗上げゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+    </p>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-h"></span> Mr.ONLINE
+</footer>
+<script>document.getElementById('year-h').textContent = new Date().getFullYear();</script>
+
+<script>
+(function(){
+"use strict";
+
+// ============================================================
+// 基本設定
+// ============================================================
+const canvas = document.getElementById('hcanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rr(x,y,w,h,r){
+  if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+const BPM_BASE = 120;
+const BPM_LEVEL4 = 156;
+const REACTION_BEATS = 4;
+const ROUNDS_PER_LEVEL = 6;
+const BREAD_OFFSET_RATIO = 0.5;
+const BREAD_WINDOW_MS = 850;
+const HAIKU_TIME_LIMIT_MS = 20000;
+const HAIKU_TARGET = "五月雨を集めて早し最上川";
+const HAIKU_PREP_BEATS = 2;
+const LEVEL_INTRO_MS = 1600;
+const ROUND_PAUSE_MS = 500;
+
+function bpmForLevel(lv){ return lv>=4 ? BPM_LEVEL4 : BPM_BASE; }
+function beatDurationMs(lv){ return 60000/bpmForLevel(lv); }
+function reactionMsForLevel(lv){ return REACTION_BEATS*beatDurationMs(lv); }
+
+// ============================================================
+// 指示生成
+// ============================================================
+function makeBasicInstruction(compound){
+  const colors = compound ? ['white','red'] : [pick(['white','red'])];
+  const instr = { whiteTarget:null, redTarget:null, special:null };
+  const parts = [];
+  for(const c of colors){
+    const dir = pick(['up','down']);
+    if(c==='white') instr.whiteTarget=dir; else instr.redTarget=dir;
+    parts.push((c==='white'?'白':'赤')+(dir==='up'?' 上げて':' 下げて'));
+  }
+  instr.text = parts.join('　');
+  return instr;
+}
+function makeSpecialInstruction(kind){
+  const color = pick(['white','red']);
+  const instr = { whiteTarget:null, redTarget:null, special:kind };
+  if(color==='white') instr.whiteTarget='up'; else instr.redTarget='up';
+  const colorText = color==='white' ? '白' : '赤';
+  instr.text = kind==='bread'
+    ? colorText+' 下げないで\nパンを食え!!'
+    : colorText+' 下げないで\n一句読め!!';
+  return instr;
+}
+function pickInstruction(level){
+  const r = Math.random();
+  if(level===1){
+    return makeBasicInstruction(false);
+  } else if(level===2){
+    if(r<0.72) return makeBasicInstruction(false);
+    return makeSpecialInstruction('bread');
+  } else if(level===3){
+    if(r<0.55) return makeBasicInstruction(false);
+    if(r<0.78) return makeSpecialInstruction('bread');
+    return makeSpecialInstruction('haiku');
+  } else {
+    if(r<0.30) return makeBasicInstruction(true);
+    if(r<0.60) return makeBasicInstruction(false);
+    if(r<0.80) return makeSpecialInstruction('bread');
+    return makeSpecialInstruction('haiku');
+  }
+}
+function checkFlagTargets(instr, flagState){
+  if(instr.whiteTarget && flagState.white!==instr.whiteTarget) return false;
+  if(instr.redTarget && flagState.red!==instr.redTarget) return false;
+  return true;
+}
+
+// ============================================================
+// グローバル状態
+// ============================================================
+let state='TITLE'; // TITLE, LEVEL_INTRO, PLAYING, GAMEOVER, CLEAR
+let level=1, roundCount=0, score=0;
+let flagState={ white:'down', red:'down' };
+let phase='countdown'; // countdown, bread, haiku, pause, resolving
+let roundTimer=0, pauseTimer=0;
+let currentInstruction=null;
+let breadShown=false, breadResolved=false, breadAppearAt=0;
+let breadPos={x:480,y:270};
+let haikuValue='', haikuTimeLeft=0, haikuPrepPending=false;
+let levelIntroTimer=0;
+let gameOverReason='';
+let missFlashTimer=0;
+let beatAccumMs=0, lastBeatIndex=-1;
+let metroPulse=0;
+
+const haikuWrap = document.getElementById('haiku-wrap');
+const haikuInput = document.getElementById('haiku-input');
+
+let bgParticles=[];
+for(let i=0;i<26;i++){
+  bgParticles.push({ x:Math.random()*W, y:Math.random()*H*0.6, vx:0.15+Math.random()*0.25, r:14+Math.random()*20, a:0.4+Math.random()*0.3 });
+}
+
+// ============================================================
+// ラウンド制御
+// ============================================================
+function startRound(){
+  currentInstruction = pickInstruction(level);
+  roundTimer=0;
+  breadShown=false; breadResolved=false;
+  breadPos = { x: 380+Math.random()*200, y: 250+Math.random()*60 };
+  haikuPrepPending = (currentInstruction.special==='haiku');
+  if(currentInstruction.special==='haiku'){
+    phase='countdown'; // 旗を整える準備時間をはさむ
+    haikuWrap.style.display='none';
+    playVoice('haiku');
+  } else {
+    phase='countdown';
+    haikuWrap.style.display='none';
+    if(currentInstruction.special==='bread') playVoice('bread');
+  }
+}
+function enterHaikuInputPhase(){
+  haikuPrepPending=false;
+  phase='haiku';
+  haikuValue=''; haikuTimeLeft=HAIKU_TIME_LIMIT_MS;
+  haikuInput.value='';
+  haikuWrap.style.display='block';
+  setTimeout(()=>{ try{ haikuInput.focus(); }catch(e){} }, 30);
+}
+function resolveRound(success){
+  if(!success) return; // 失敗はtriggerGameOver側で処理済み
+  score += 100*level + (currentInstruction.special?60:0);
+  roundCount++;
+  phase='pause';
+  pauseTimer=ROUND_PAUSE_MS;
+  haikuWrap.style.display='none';
+  if(roundCount>=ROUNDS_PER_LEVEL){
+    if(level>=4){ triggerClear(); }
+    else { pendingLevelUp=true; }
+  }
+}
+let pendingLevelUp=false;
+function levelUp(){
+  level++;
+  roundCount=0;
+  flagState={white:'down', red:'down'};
+  levelIntroTimer=LEVEL_INTRO_MS;
+  state='LEVEL_INTRO';
+  beatAccumMs=0; lastBeatIndex=-1;
+}
+function triggerClear(){
+  state='CLEAR';
+  haikuWrap.style.display='none';
+  stopAmbient();
+  playClearJingle();
+}
+function triggerGameOver(reason){
+  if(state!=='PLAYING') return;
+  gameOverReason=reason;
+  missFlashTimer=650;
+  state='GAMEOVER_PENDING';
+  haikuWrap.style.display='none';
+  stopAmbient();
+  playMissSound();
+}
+
+function toggleFlag(color){
+  if(state!=='PLAYING' || phase!=='countdown') return;
+  flagState[color] = flagState[color]==='up' ? 'down' : 'up';
+  playToggleSound();
+}
+function tryHitBread(){
+  if(state!=='PLAYING' || phase!=='countdown') return;
+  if(currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved){
+    breadResolved = true;
+    playHitSound();
+  }
+}
+
+function startGame(){
+  resumeAudio();
+  level=1; roundCount=0; score=0;
+  flagState={white:'down', red:'down'};
+  gameOverReason=''; missFlashTimer=0; haikuPrepPending=false;
+  beatAccumMs=0; lastBeatIndex=-1;
+  levelIntroTimer=LEVEL_INTRO_MS;
+  state='LEVEL_INTRO';
+  haikuWrap.style.display='none';
+  startAmbient();
+}
+
+// ============================================================
+// 更新
+// ============================================================
+function updateAtmosphere(dt){
+  for(const p of bgParticles){ p.x+=p.vx*dt; if(p.x-p.r>W) p.x=-p.r; }
+}
+function updateBeatClock(dt, lv){
+  beatAccumMs += dt*16.6667;
+  const dur = beatDurationMs(lv);
+  const idx = Math.floor(beatAccumMs/dur);
+  if(idx!==lastBeatIndex){
+    lastBeatIndex=idx;
+    metroPulse=1;
+    playTick(idx%4===0);
+  } else {
+    metroPulse = Math.max(0, metroPulse-dt*0.09);
+  }
+}
+
+function update(dt){
+  if(state==='TITLE'){ updateAtmosphere(dt); return; }
+  if(state==='CLEAR'){ updateAtmosphere(dt); return; }
+
+  if(state==='LEVEL_INTRO'){
+    levelIntroTimer -= dt*16.6667;
+    if(levelIntroTimer<=0){ state='PLAYING'; startRound(); }
+    return;
+  }
+
+  if(state==='GAMEOVER_PENDING'){
+    missFlashTimer -= dt*16.6667;
+    if(missFlashTimer<=0){ state='GAMEOVER'; playGameOverJingle(); }
+    return;
+  }
+  if(state==='GAMEOVER'){ updateAtmosphere(dt); return; }
+
+  // PLAYING
+  updateBeatClock(dt, level);
+
+  if(phase==='pause'){
+    pauseTimer -= dt*16.6667;
+    if(pauseTimer<=0){
+      if(pendingLevelUp){ pendingLevelUp=false; levelUp(); }
+      else { startRound(); }
+    }
+    return;
+  }
+
+  if(phase==='haiku'){
+    haikuTimeLeft -= dt*16.6667;
+    if(haikuTimeLeft<=0){
+      triggerGameOver('haiku_timeout');
+    }
+    return;
+  }
+
+  if(phase==='countdown'){
+    roundTimer += dt*16.6667;
+    const reactionMs = reactionMsForLevel(level);
+
+    if(haikuPrepPending){
+      const prepMs = HAIKU_PREP_BEATS*beatDurationMs(level);
+      if(roundTimer >= prepMs){ enterHaikuInputPhase(); }
+      return;
+    }
+
+    if(currentInstruction.special==='bread'){
+      if(!breadShown && roundTimer >= reactionMs*BREAD_OFFSET_RATIO){
+        breadShown=true; breadAppearAt=roundTimer;
+      }
+      if(breadShown && !breadResolved && (roundTimer-breadAppearAt) > BREAD_WINDOW_MS){
+        triggerGameOver('bread_miss');
+        return;
+      }
+    }
+    if(roundTimer >= reactionMs){
+      const ok = checkFlagTargets(currentInstruction, flagState);
+      if(ok) resolveRound(true);
+      else triggerGameOver('flag_mismatch');
+    }
+  }
+}
+
+// haiku入力イベント
+haikuInput.addEventListener('input', ()=>{
+  if(state!=='PLAYING' || phase!=='haiku') return;
+  haikuValue = haikuInput.value;
+  if(haikuValue.trim()===HAIKU_TARGET){
+    const ok = checkFlagTargets(currentInstruction, flagState);
+    haikuWrap.style.display='none';
+    if(ok) resolveRound(true);
+    else triggerGameOver('flag_mismatch');
+  }
+});
+
+// ============================================================
+// 描画
+// ============================================================
+function centerText(text,y,size,color){
+  ctx.font=size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=color; ctx.textAlign='center';
+  const lines = String(text).split('\n');
+  lines.forEach((ln,i)=> ctx.fillText(ln, W/2, y+i*(size+8)));
+  ctx.textAlign='left';
+}
+function drawBackground(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#7ec8e3'); g.addColorStop(0.55,'#bfe3ef'); g.addColorStop(1,'#f4ecd8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  for(const p of bgParticles){
+    ctx.beginPath();
+    ctx.ellipse(p.x,p.y,p.r,p.r*0.5,0,0,Math.PI*2);
+    ctx.ellipse(p.x+p.r*0.7,p.y+2,p.r*0.7,p.r*0.4,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.fillStyle='#8a9a5b';
+  ctx.fillRect(0,H-40,W,40);
+}
+function drawFlagPole(x, colorKey, poleLabel, flagColor){
+  const baseY=H-40, topY=140;
+  ctx.strokeStyle='#5a4632'; ctx.lineWidth=8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x,baseY); ctx.lineTo(x,topY); ctx.stroke();
+  ctx.fillStyle='#5a4632';
+  ctx.beginPath(); ctx.arc(x,topY-6,7,0,Math.PI*2); ctx.fill();
+
+  const isUp = flagState[colorKey]==='up';
+  const targetY = isUp ? topY+18 : baseY-70;
+  if(!drawFlagPole.yMap) drawFlagPole.yMap={};
+  const key=colorKey;
+  if(drawFlagPole.yMap[key]===undefined) drawFlagPole.yMap[key]=targetY;
+  drawFlagPole.yMap[key] += (targetY-drawFlagPole.yMap[key])*0.18;
+  const fy = drawFlagPole.yMap[key];
+
+  ctx.fillStyle=flagColor;
+  ctx.beginPath();
+  ctx.moveTo(x+4, fy);
+  ctx.lineTo(x+64, fy+16);
+  ctx.lineTo(x+4, fy+34);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  ctx.font="11px 'Press Start 2P', monospace";
+  ctx.fillStyle='#2b2118'; ctx.textAlign='center';
+  ctx.fillText(poleLabel, x, baseY+26);
+  ctx.textAlign='left';
+}
+function drawMetronome(){
+  const cx=W/2, cy=95;
+  const r=16+metroPulse*10;
+  ctx.fillStyle=`rgba(255,183,3,${0.25+metroPulse*0.5})`;
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2b2118';
+  ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.fill();
+}
+function drawInstructionBanner(){
+  if(!currentInstruction) return;
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  rr(W/2-260,150,520,74,10); ctx.fill();
+  ctx.strokeStyle='#ffb703'; ctx.lineWidth=2;
+  rr(W/2-260,150,520,74,10); ctx.stroke();
+  centerText(currentInstruction.text, 180, 14, '#2b2118');
+
+  if(phase==='countdown'){
+    const barMs = haikuPrepPending ? HAIKU_PREP_BEATS*beatDurationMs(level) : reactionMsForLevel(level);
+    const remain = clamp(1-(roundTimer/barMs),0,1);
+    ctx.fillStyle='#e0d8c0'; ctx.fillRect(W/2-260, 230, 520, 8);
+    ctx.fillStyle = remain<0.3 ? '#e63946' : '#ffb703';
+    ctx.fillRect(W/2-260, 230, 520*remain, 8);
+  }
+}
+function drawBread(){
+  if(!(phase==='countdown' && currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved)) return;
+  const t = clamp((roundTimer-breadAppearAt)/BREAD_WINDOW_MS,0,1);
+  const {x,y} = breadPos;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle='#e0a458';
+  ctx.beginPath(); ctx.ellipse(0,0,30,22,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c98a3f';
+  ctx.beginPath(); ctx.ellipse(0,4,22,13,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = t>0.75 ? '#e63946' : '#ffb703';
+  ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(x,y,38,-Math.PI/2,-Math.PI/2+(1-t)*Math.PI*2); ctx.stroke();
+  ctx.font="10px 'Press Start 2P', monospace"; ctx.fillStyle='#2b2118'; ctx.textAlign='center';
+  ctx.fillText('タップ!', x, y-48);
+  ctx.textAlign='left';
+}
+function drawHaikuOverlay(){
+  if(phase!=='haiku') return;
+  ctx.fillStyle='rgba(43,33,24,0.4)'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  rr(W/2-300,150,600,150,12); ctx.fill();
+  ctx.strokeStyle='#ffb703'; ctx.lineWidth=2; rr(W/2-300,150,600,150,12); ctx.stroke();
+
+  ctx.font="9px 'Press Start 2P', monospace"; ctx.fillStyle='#9b8a6a'; ctx.textAlign='center';
+  ctx.fillText('次の句を入力してください', W/2, 178);
+
+  const matched = commonPrefixLen(haikuValue.trim(), HAIKU_TARGET);
+  ctx.font="20px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
+  const chars = HAIKU_TARGET.split('');
+  const totalW = ctx.measureText(HAIKU_TARGET).width;
+  let sx = W/2 - totalW/2;
+  for(let i=0;i<chars.length;i++){
+    ctx.fillStyle = i<matched ? '#2a9d5c' : '#2b2118';
+    ctx.textAlign='left';
+    ctx.fillText(chars[i], sx, 212);
+    sx += ctx.measureText(chars[i]).width;
+  }
+  ctx.textAlign='left';
+
+  const barW=520;
+  ctx.fillStyle='#e0d8c0'; ctx.fillRect(W/2-barW/2, 260, barW, 8);
+  const ratio = clamp(haikuTimeLeft/HAIKU_TIME_LIMIT_MS,0,1);
+  ctx.fillStyle = ratio<0.3 ? '#e63946' : '#ffb703';
+  ctx.fillRect(W/2-barW/2, 260, barW*ratio, 8);
+}
+function commonPrefixLen(a,b){
+  let i=0; while(i<a.length && i<b.length && a[i]===b[i]) i++; return i;
+}
+
+function drawHUD(){
+  ctx.font="10px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(255,255,255,0.75)'; rr(10,10,190,58,8); ctx.fill();
+  ctx.fillStyle='#2b2118';
+  ctx.fillText('LEVEL '+level+' / 4', 22, 30);
+  ctx.fillText('ROUND '+roundCount+'/'+ROUNDS_PER_LEVEL, 22, 48);
+  ctx.fillStyle='rgba(255,255,255,0.75)'; rr(W-180,10,170,34,8); ctx.fill();
+  ctx.fillStyle='#2b2118';
+  ctx.fillText('SCORE '+String(score).padStart(6,'0'), W-170, 32);
+}
+
+function drawMissFlash(){
+  if(missFlashTimer<=0) return;
+  const a = Math.min(0.7, missFlashTimer/650*0.7);
+  ctx.fillStyle=`rgba(230,57,70,${a})`;
+  ctx.fillRect(0,0,W,H);
+  centerText('ミス!', H/2, 26, '#fff');
+}
+
+function drawTitleScreen(){
+  drawBackground();
+  centerText('旗上げビート', H*0.28, 24, '#e63946');
+  centerText('- DON\'T MISS A BEAT -', H*0.28+30, 10, '#5a4632');
+  ctx.save();
+  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP', H*0.58, 12, '#2b2118');
+  ctx.restore();
+  centerText('ビートに合わせて、指示通りに旗を操作しよう', H*0.7, 10, '#5a4632');
+  centerText('レベル4まで、ミスは即ゲームオーバー', H*0.76, 9, '#5a4632');
+}
+function drawLevelIntro(){
+  drawBackground();
+  drawFlagPole(300,'white','白',  '#fdfaf3');
+  drawFlagPole(660,'red','赤', '#e63946');
+  ctx.fillStyle='rgba(43,33,24,0.35)'; ctx.fillRect(0,0,W,H);
+  centerText('LEVEL '+level, H/2-14, 26, '#fff');
+  const descs = {
+    1:'白・赤の旗をテンポに合わせて操作',
+    2:'+ パンを食え!! が追加',
+    3:'+ 一句読め!! が追加',
+    4:'テンポアップ、全指示が混在'
+  };
+  centerText(descs[level]||'', H/2+22, 10, '#ffe9b0');
+}
+function drawGameOverScreen(){
+  drawBackground();
+  const reasonMap = {
+    flag_mismatch:'指示通りに旗を扱えなかった…',
+    bread_miss:'パンを食べ損ねた…',
+    haiku_timeout:'一句を詠み切れなかった…'
+  };
+  centerText('GAME OVER', H*0.28, 24, '#e63946');
+  centerText(reasonMap[gameOverReason]||'指示に従えなかった…', H*0.28+30, 11, '#5a4632');
+  centerText('到達 LEVEL '+level+'　SCORE '+String(score).padStart(6,'0'), H*0.28+62, 11, '#2b2118');
+  ctx.save();
+  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.7, 10, '#2b2118');
+  ctx.restore();
+}
+function drawClearScreen(){
+  drawBackground();
+  centerText('全レベルクリア!', H*0.28, 22, '#2a9d5c');
+  centerText('見事、旗上げビートを制覇した', H*0.28+28, 10, '#5a4632');
+  centerText('FINAL SCORE '+String(score).padStart(6,'0'), H*0.28+58, 14, '#2b2118');
+  ctx.save();
+  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.7, 10, '#2b2118');
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='TITLE'){ drawTitleScreen(); return; }
+  if(state==='LEVEL_INTRO'){ drawLevelIntro(); return; }
+  if(state==='GAMEOVER'){ drawGameOverScreen(); return; }
+  if(state==='CLEAR'){ drawClearScreen(); return; }
+
+  drawBackground();
+  drawFlagPole(300,'white','白 (←/A)', '#fdfaf3');
+  drawFlagPole(660,'red','赤 (→/D)', '#e63946');
+  drawMetronome();
+  if(state==='PLAYING' || state==='GAMEOVER_PENDING'){
+    drawInstructionBanner();
+    drawBread();
+  }
+  drawHUD();
+  drawHaikuOverlay();
+  drawMissFlash();
+}
+
+// ============================================================
+// オーディオエンジン
+// ============================================================
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
+let breadBuffer=null, haikuBuffer=null, voiceLoadStarted=false;
+function ensureAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:1;
+  musicGain=audioCtx.createGain(); musicGain.gain.value=0.4;
+  sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.6;
+  musicGain.connect(masterGain); sfxGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+  loadVoiceClips();
+}
+function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+async function loadVoiceClips(){
+  if(voiceLoadStarted || !audioCtx) return;
+  voiceLoadStarted = true;
+  try{
+    const [r1,r2] = await Promise.all([fetch('voice-bread.mp3'), fetch('voice-haiku.mp3')]);
+    const [a1,a2] = await Promise.all([r1.arrayBuffer(), r2.arrayBuffer()]);
+    breadBuffer = await audioCtx.decodeAudioData(a1);
+    haikuBuffer = await audioCtx.decodeAudioData(a2);
+  } catch(e){ /* 音声ファイルが見つからない場合は無音でフォールバック */ }
+}
+function playVoice(which){
+  ensureAudio(); if(!audioCtx) return;
+  const buf = which==='bread' ? breadBuffer : haikuBuffer;
+  if(!buf) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf; src.connect(sfxGain); src.start(0);
+}
+
+let droneOsc=null, dronePlaying=false;
+function startAmbient(){
+  resumeAudio(); if(!audioCtx || dronePlaying) return;
+  dronePlaying=true;
+  const g=audioCtx.createGain(); g.gain.value=0.05;
+  droneOsc=audioCtx.createOscillator(); droneOsc.type='sine'; droneOsc.frequency.value=220;
+  droneOsc.connect(g); g.connect(musicGain);
+  droneOsc.start();
+}
+function stopAmbient(){
+  if(!dronePlaying) return;
+  dronePlaying=false;
+  try{ droneOsc.stop(); }catch(e){}
+}
+
+function playTick(accent){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='square'; osc.frequency.setValueAtTime(accent?1200:800,t0);
+  gain.gain.setValueAtTime(accent?0.12:0.07,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.05);
+  osc.connect(gain); gain.connect(musicGain);
+  osc.start(t0); osc.stop(t0+0.06);
+}
+function playToggleSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.setValueAtTime(500,t0); osc.frequency.exponentialRampToValueAtTime(700,t0+0.08);
+  gain.gain.setValueAtTime(0.14,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.1);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.12);
+}
+function playHitSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [660,880].forEach((f,i)=>{
+    const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.06);
+    gain.gain.setValueAtTime(0.18,t0+i*0.06); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.06+0.12);
+    osc.connect(gain); gain.connect(sfxGain);
+    osc.start(t0+i*0.06); osc.stop(t0+i*0.06+0.14);
+  });
+}
+function playMissSound(){
+  ensureAudio(); if(!audioCtx) return;
+  const bufferSize=Math.floor(audioCtx.sampleRate*0.3);
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='lowpass';
+  const t0=audioCtx.currentTime;
+  filter.frequency.setValueAtTime(2000,t0); filter.frequency.exponentialRampToValueAtTime(150,t0+0.3);
+  const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.3,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.3);
+  src.connect(filter); filter.connect(gain); gain.connect(sfxGain);
+  src.start(t0); src.stop(t0+0.32);
+}
+function playGameOverJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const notes=[392,349,294,262];
+  notes.forEach((f,i)=>{
+    const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.setValueAtTime(f,t0+i*0.18);
+    gain.gain.setValueAtTime(0.001,t0+i*0.18); gain.gain.linearRampToValueAtTime(0.2,t0+i*0.18+0.02); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.18+0.35);
+    osc.connect(gain); gain.connect(sfxGain);
+    osc.start(t0+i*0.18); osc.stop(t0+i*0.18+0.4);
+  });
+}
+function playClearJingle(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const notes=[523,659,784,1047,784,1047];
+  notes.forEach((f,i)=>{
+    const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.12);
+    gain.gain.setValueAtTime(0.001,t0+i*0.12); gain.gain.linearRampToValueAtTime(0.22,t0+i*0.12+0.02); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.12+0.24);
+    osc.connect(gain); gain.connect(sfxGain);
+    osc.start(t0+i*0.12); osc.stop(t0+i*0.12+0.26);
+  });
+}
+
+const btnMute=document.getElementById('btn-mute');
+btnMute.addEventListener('click', ()=>{
+  ensureAudio();
+  muted=!muted;
+  if(masterGain) masterGain.gain.value = muted?0:1;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// 入力
+// ============================================================
+function handleConfirmKey(){
+  if(state==='TITLE' || state==='GAMEOVER' || state==='CLEAR') startGame();
+  else if(state==='PLAYING') tryHitBread();
+}
+window.addEventListener('keydown',(e)=>{
+  if(document.activeElement===haikuInput) {
+    if(e.code==='Enter') e.preventDefault();
+    return;
+  }
+  if(['ArrowLeft','KeyA'].includes(e.code)) toggleFlag('white');
+  if(['ArrowRight','KeyD'].includes(e.code)) toggleFlag('red');
+  if(['Enter','Space'].includes(e.code)){ handleConfirmKey(); e.preventDefault(); }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+
+document.getElementById('btn-white-flag').addEventListener('pointerdown',(e)=>{ e.preventDefault(); toggleFlag('white'); });
+document.getElementById('btn-red-flag').addEventListener('pointerdown',(e)=>{ e.preventDefault(); toggleFlag('red'); });
+
+function getCanvasPos(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W/rect.width, scaleY = H/rect.height;
+  return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
+}
+canvas.addEventListener('click', (e)=>{
+  if(state==='TITLE' || state==='GAMEOVER' || state==='CLEAR'){ startGame(); return; }
+  if(state!=='PLAYING' || phase!=='countdown') return;
+  const p = getCanvasPos(e.clientX, e.clientY);
+  if(currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved){
+    if(Math.hypot(p.x-breadPos.x, p.y-breadPos.y) < 46) tryHitBread();
+  }
+});
+
+// ============================================================
+// ループ
+// ============================================================
+let lastTime=null;
+function loop(ts){
+  if(lastTime===null) lastTime=ts;
+  let deltaMs=ts-lastTime; lastTime=ts;
+  if(deltaMs>100) deltaMs=100;
+  const dt=deltaMs/16.6667;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
