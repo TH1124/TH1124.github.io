@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>旗上げビート -DON'T MISS A BEAT-</title>
-<meta name="description" content="無料で遊べるブラウザ用リズムゲーム「旗上げビート」。テンポ120のビートに合わせて白旗・赤旗を上げ下げし、途中からはパンを食べたり一句詠んだりする指示もこなす、4段階の旗上げゲーム。">
+<meta name="description" content="無料で遊べるブラウザ用反射神経ゲーム「旗上げビート」。白旗・赤旗を指示通りに上げ下げする、だんだん加速するサバイバル型の旗上げゲーム。フェイントの指示に引っかからず、どこまで生き残れるか。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -31,16 +31,6 @@
     border:1px solid rgba(43,33,24,0.3);background:rgba(255,255,255,0.75);color:#2b2118;
     font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
     -webkit-tap-highlight-color:transparent;
-  }
-  #haiku-wrap{
-    position:absolute; left:50%; top:60%; transform:translate(-50%,-50%);
-    width:80%; max-width:560px; display:none; z-index:8; text-align:center;
-  }
-  #haiku-input{
-    width:100%; box-sizing:border-box; font-size:18px; padding:10px 14px;
-    border-radius:8px; border:2px solid #ffb703; outline:none;
-    font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
-    text-align:center;
   }
   #touch-controls{ position:absolute; inset:0; display:none; pointer-events:none; }
   .flag-btn{
@@ -95,9 +85,6 @@
   <div id="game-wrap">
     <canvas id="hcanvas" width="960" height="540"></canvas>
     <button id="btn-mute" title="音を消す/戻す">🔊</button>
-    <div id="haiku-wrap">
-      <input id="haiku-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-    </div>
     <div id="touch-controls">
       <button id="btn-white-flag" class="flag-btn">白</button>
       <button id="btn-red-flag" class="flag-btn">赤</button>
@@ -105,13 +92,13 @@
   </div>
 
   <div class="hint2">
-    白旗操作 <b>← / A</b>&nbsp;&nbsp;赤旗操作 <b>→ / D</b>&nbsp;&nbsp;パンを食べる/決定 <b>クリック・タップ / Space</b><br>
-    テンポに合わせて指示通りに旗を上げ下げしよう。指示に従えないと即ゲームオーバー。全4レベルクリアを目指せ。
+    白旗操作 <b>← / A</b>&nbsp;&nbsp;赤旗操作 <b>→ / D</b><br>
+    指示通りに旗を上げ下げしよう。「〜ないで」はフェイント、逆の状態を保つ合図。ミスは即ゲームオーバー、どんどん速くなる中でどこまで生き残れるか。
   </div>
 
   <div style="max-width:640px;text-align:center;">
     <p style="font-size:13px;color:var(--sub);line-height:1.9;">
-      「旗上げビート」はテンポ120のビートに合わせて遊ぶ、少し変わった旗上げゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+      「旗上げビート」は指示通りに旗を上げ下げする、だんだん加速するサバイバル型の旗上げゲームです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
     </p>
   </div>
 </div>
@@ -152,64 +139,67 @@ function rr(x,y,w,h,r){
   ctx.closePath();
 }
 
-const BPM_BASE = 120;
-const BPM_LEVEL4 = 156;
-const REACTION_BEATS = 4;
-const ROUNDS_PER_LEVEL = 6;
-const BREAD_OFFSET_RATIO = 0.5;
-const BREAD_WINDOW_MS = 850;
-const HAIKU_TIME_LIMIT_MS = 20000;
-const HAIKU_TARGET = "五月雨を集めて早し最上川";
-const HAIKU_PREP_BEATS = 2;
-const LEVEL_INTRO_MS = 1600;
-const ROUND_PAUSE_MS = 500;
+const BASE_REACTION_MS = 1600;
+const MIN_REACTION_MS = 550;
+const REACTION_DECREMENT = 28;
+const ROUND_PAUSE_MS = 300;
+const COMPOUND_UNLOCK_ROUND = 8;
+const CORRECTION_UNLOCK_ROUND = 15;
+const CORRECTION_DELAY_MS = 480;
+const BPM_MIN = 120, BPM_MAX = 210, BPM_GROWTH_PER_ROUND = 2;
+const MILESTONE_EVERY = 10;
 
-function bpmForLevel(lv){ return lv>=4 ? BPM_LEVEL4 : BPM_BASE; }
-function beatDurationMs(lv){ return 60000/bpmForLevel(lv); }
-function reactionMsForLevel(lv){ return REACTION_BEATS*beatDurationMs(lv); }
+function currentReactionMs(rounds){ return Math.max(MIN_REACTION_MS, BASE_REACTION_MS - rounds*REACTION_DECREMENT); }
+function currentBpm(rounds){ return clamp(BPM_MIN + rounds*BPM_GROWTH_PER_ROUND, BPM_MIN, BPM_MAX); }
+function beatDurationMs(rounds){ return 60000/currentBpm(rounds); }
 
 // ============================================================
 // 指示生成
 // ============================================================
-function makeBasicInstruction(compound){
-  const colors = compound ? ['white','red'] : [pick(['white','red'])];
+function makeSingleInstr(){
   const instr = { whiteTarget:null, redTarget:null, special:null };
-  const parts = [];
-  for(const c of colors){
-    const dir = pick(['up','down']);
-    if(c==='white') instr.whiteTarget=dir; else instr.redTarget=dir;
-    parts.push((c==='white'?'白':'赤')+(dir==='up'?' 上げて':' 下げて'));
-  }
-  instr.text = parts.join('　');
-  return instr;
-}
-function makeSpecialInstruction(kind){
   const color = pick(['white','red']);
-  const instr = { whiteTarget:null, redTarget:null, special:kind };
-  if(color==='white') instr.whiteTarget='up'; else instr.redTarget='up';
+  const target = pick(['up','down']);
+  const useNegative = Math.random() < 0.4;
   const colorText = color==='white' ? '白' : '赤';
-  instr.text = kind==='bread'
-    ? colorText+' 下げないで\nパンを食え!!'
-    : colorText+' 下げないで\n一句読め!!';
+  const text = useNegative
+    ? colorText + ' ' + (target==='up' ? '下げないで' : '上げないで')
+    : colorText + (target==='up' ? ' 上げて' : ' 下げて');
+  instr[color+'Target'] = target;
+  instr.text = text;
   return instr;
 }
-function pickInstruction(level){
-  const r = Math.random();
-  if(level===1){
-    return makeBasicInstruction(false);
-  } else if(level===2){
-    if(r<0.72) return makeBasicInstruction(false);
-    return makeSpecialInstruction('bread');
-  } else if(level===3){
-    if(r<0.55) return makeBasicInstruction(false);
-    if(r<0.78) return makeSpecialInstruction('bread');
-    return makeSpecialInstruction('haiku');
-  } else {
-    if(r<0.30) return makeBasicInstruction(true);
-    if(r<0.60) return makeBasicInstruction(false);
-    if(r<0.80) return makeSpecialInstruction('bread');
-    return makeSpecialInstruction('haiku');
+function makeCompoundInstruction(){
+  const targets = { white: pick(['up','down']), red: pick(['up','down']) };
+  const parts = [];
+  for(const color of ['white','red']){
+    const target = targets[color];
+    const useNegative = Math.random() < 0.4;
+    const colorText = color==='white' ? '白' : '赤';
+    parts.push(useNegative
+      ? colorText + ' ' + (target==='up' ? '下げないで' : '上げないで')
+      : colorText + (target==='up' ? ' 上げて' : ' 下げて'));
   }
+  return { whiteTarget:targets.white, redTarget:targets.red, special:'compound', text: parts.join('　') };
+}
+function makeCorrectionInstruction(){
+  const decoy = makeSingleInstr();
+  let real = makeSingleInstr();
+  let guard=0;
+  while(real.text===decoy.text && guard<10){ real = makeSingleInstr(); guard++; }
+  return {
+    whiteTarget: real.whiteTarget, redTarget: real.redTarget, special:'correction',
+    text: decoy.text, correctedText: 'やっぱり '+real.text
+  };
+}
+function pickInstruction(roundsCleared){
+  const canCompound = roundsCleared >= COMPOUND_UNLOCK_ROUND;
+  const canCorrection = roundsCleared >= CORRECTION_UNLOCK_ROUND;
+  const roll = Math.random();
+  let cursor = 0;
+  if(canCorrection){ cursor += 0.20; if(roll < cursor) return makeCorrectionInstruction(); }
+  if(canCompound){ cursor += 0.25; if(roll < cursor) return makeCompoundInstruction(); }
+  return makeSingleInstr();
 }
 function checkFlagTargets(instr, flagState){
   if(instr.whiteTarget && flagState.white!==instr.whiteTarget) return false;
@@ -220,23 +210,16 @@ function checkFlagTargets(instr, flagState){
 // ============================================================
 // グローバル状態
 // ============================================================
-let state='TITLE'; // TITLE, LEVEL_INTRO, PLAYING, GAMEOVER, CLEAR
-let level=1, roundCount=0, score=0;
+let state='TITLE'; // TITLE, PLAYING, GAMEOVER_PENDING, GAMEOVER
+let roundsCleared=0, score=0, bestRounds=0;
 let flagState={ white:'down', red:'down' };
-let phase='countdown'; // countdown, bread, haiku, pause, resolving
+let phase='countdown'; // countdown, pause
 let roundTimer=0, pauseTimer=0;
 let currentInstruction=null;
-let breadShown=false, breadResolved=false, breadAppearAt=0;
-let breadPos={x:480,y:270};
-let haikuValue='', haikuTimeLeft=0, haikuPrepPending=false;
-let levelIntroTimer=0;
-let gameOverReason='';
+let correctionRevealed=true;
 let missFlashTimer=0;
-let beatAccumMs=0, lastBeatIndex=-1;
-let metroPulse=0;
-
-const haikuWrap = document.getElementById('haiku-wrap');
-const haikuInput = document.getElementById('haiku-input');
+let beatAccumMs=0, lastBeatIndex=-1, metroPulse=0;
+let milestoneFlashTimer=0, milestoneText='';
 
 let bgParticles=[];
 for(let i=0;i<26;i++){
@@ -247,89 +230,45 @@ for(let i=0;i<26;i++){
 // ラウンド制御
 // ============================================================
 function startRound(){
-  currentInstruction = pickInstruction(level);
+  currentInstruction = pickInstruction(roundsCleared);
   roundTimer=0;
-  breadShown=false; breadResolved=false;
-  breadPos = { x: 380+Math.random()*200, y: 250+Math.random()*60 };
-  haikuPrepPending = (currentInstruction.special==='haiku');
-  if(currentInstruction.special==='haiku'){
-    phase='countdown'; // 旗を整える準備時間をはさむ
-    haikuWrap.style.display='none';
-    playVoice('haiku');
-  } else {
-    phase='countdown';
-    haikuWrap.style.display='none';
-    if(currentInstruction.special==='bread') playVoice('bread');
+  correctionRevealed = (currentInstruction.special!=='correction');
+  phase='countdown';
+}
+function resolveRound(){
+  const speedBonus = Math.floor((BASE_REACTION_MS-currentReactionMs(roundsCleared))/120);
+  score += 10 + speedBonus + (currentInstruction.special==='compound'?5:0) + (currentInstruction.special==='correction'?8:0);
+  roundsCleared++;
+  if(roundsCleared%MILESTONE_EVERY===0){
+    milestoneFlashTimer=900;
+    milestoneText = roundsCleared+'連続!';
+    playMilestoneJingle();
   }
-}
-function enterHaikuInputPhase(){
-  haikuPrepPending=false;
-  phase='haiku';
-  haikuValue=''; haikuTimeLeft=HAIKU_TIME_LIMIT_MS;
-  haikuInput.value='';
-  haikuWrap.style.display='block';
-  setTimeout(()=>{ try{ haikuInput.focus(); }catch(e){} }, 30);
-}
-function resolveRound(success){
-  if(!success) return; // 失敗はtriggerGameOver側で処理済み
-  score += 100*level + (currentInstruction.special?60:0);
-  roundCount++;
   phase='pause';
   pauseTimer=ROUND_PAUSE_MS;
-  haikuWrap.style.display='none';
-  if(roundCount>=ROUNDS_PER_LEVEL){
-    if(level>=4){ triggerClear(); }
-    else { pendingLevelUp=true; }
-  }
 }
-let pendingLevelUp=false;
-function levelUp(){
-  level++;
-  roundCount=0;
-  flagState={white:'down', red:'down'};
-  levelIntroTimer=LEVEL_INTRO_MS;
-  state='LEVEL_INTRO';
-  beatAccumMs=0; lastBeatIndex=-1;
-}
-function triggerClear(){
-  state='CLEAR';
-  haikuWrap.style.display='none';
-  stopAmbient();
-  playClearJingle();
-}
-function triggerGameOver(reason){
+function triggerGameOver(){
   if(state!=='PLAYING') return;
-  gameOverReason=reason;
   missFlashTimer=650;
   state='GAMEOVER_PENDING';
-  haikuWrap.style.display='none';
   stopAmbient();
   playMissSound();
+  bestRounds = Math.max(bestRounds, roundsCleared);
 }
-
 function toggleFlag(color){
   if(state!=='PLAYING' || phase!=='countdown') return;
   flagState[color] = flagState[color]==='up' ? 'down' : 'up';
   playToggleSound();
 }
-function tryHitBread(){
-  if(state!=='PLAYING' || phase!=='countdown') return;
-  if(currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved){
-    breadResolved = true;
-    playHitSound();
-  }
-}
-
 function startGame(){
   resumeAudio();
-  level=1; roundCount=0; score=0;
+  roundsCleared=0; score=0;
   flagState={white:'down', red:'down'};
-  gameOverReason=''; missFlashTimer=0; haikuPrepPending=false;
+  missFlashTimer=0; milestoneFlashTimer=0;
   beatAccumMs=0; lastBeatIndex=-1;
-  levelIntroTimer=LEVEL_INTRO_MS;
-  state='LEVEL_INTRO';
-  haikuWrap.style.display='none';
+  state='PLAYING';
   startAmbient();
+  startRound();
 }
 
 // ============================================================
@@ -338,9 +277,9 @@ function startGame(){
 function updateAtmosphere(dt){
   for(const p of bgParticles){ p.x+=p.vx*dt; if(p.x-p.r>W) p.x=-p.r; }
 }
-function updateBeatClock(dt, lv){
+function updateBeatClock(dt, rounds){
   beatAccumMs += dt*16.6667;
-  const dur = beatDurationMs(lv);
+  const dur = beatDurationMs(rounds);
   const idx = Math.floor(beatAccumMs/dur);
   if(idx!==lastBeatIndex){
     lastBeatIndex=idx;
@@ -350,16 +289,8 @@ function updateBeatClock(dt, lv){
     metroPulse = Math.max(0, metroPulse-dt*0.09);
   }
 }
-
 function update(dt){
   if(state==='TITLE'){ updateAtmosphere(dt); return; }
-  if(state==='CLEAR'){ updateAtmosphere(dt); return; }
-
-  if(state==='LEVEL_INTRO'){
-    levelIntroTimer -= dt*16.6667;
-    if(levelIntroTimer<=0){ state='PLAYING'; startRound(); }
-    return;
-  }
 
   if(state==='GAMEOVER_PENDING'){
     missFlashTimer -= dt*16.6667;
@@ -369,63 +300,34 @@ function update(dt){
   if(state==='GAMEOVER'){ updateAtmosphere(dt); return; }
 
   // PLAYING
-  updateBeatClock(dt, level);
+  updateBeatClock(dt, roundsCleared);
+  if(milestoneFlashTimer>0) milestoneFlashTimer -= dt*16.6667;
 
   if(phase==='pause'){
     pauseTimer -= dt*16.6667;
-    if(pauseTimer<=0){
-      if(pendingLevelUp){ pendingLevelUp=false; levelUp(); }
-      else { startRound(); }
-    }
-    return;
-  }
-
-  if(phase==='haiku'){
-    haikuTimeLeft -= dt*16.6667;
-    if(haikuTimeLeft<=0){
-      triggerGameOver('haiku_timeout');
-    }
+    if(pauseTimer<=0) startRound();
     return;
   }
 
   if(phase==='countdown'){
     roundTimer += dt*16.6667;
-    const reactionMs = reactionMsForLevel(level);
 
-    if(haikuPrepPending){
-      const prepMs = HAIKU_PREP_BEATS*beatDurationMs(level);
-      if(roundTimer >= prepMs){ enterHaikuInputPhase(); }
+    if(currentInstruction.special==='correction' && !correctionRevealed){
+      if(roundTimer >= CORRECTION_DELAY_MS){
+        correctionRevealed = true;
+        roundTimer = 0;
+      }
       return;
     }
 
-    if(currentInstruction.special==='bread'){
-      if(!breadShown && roundTimer >= reactionMs*BREAD_OFFSET_RATIO){
-        breadShown=true; breadAppearAt=roundTimer;
-      }
-      if(breadShown && !breadResolved && (roundTimer-breadAppearAt) > BREAD_WINDOW_MS){
-        triggerGameOver('bread_miss');
-        return;
-      }
-    }
+    const reactionMs = currentReactionMs(roundsCleared);
     if(roundTimer >= reactionMs){
       const ok = checkFlagTargets(currentInstruction, flagState);
-      if(ok) resolveRound(true);
-      else triggerGameOver('flag_mismatch');
+      if(ok) resolveRound();
+      else triggerGameOver();
     }
   }
 }
-
-// haiku入力イベント
-haikuInput.addEventListener('input', ()=>{
-  if(state!=='PLAYING' || phase!=='haiku') return;
-  haikuValue = haikuInput.value;
-  if(haikuValue.trim()===HAIKU_TARGET){
-    const ok = checkFlagTargets(currentInstruction, flagState);
-    haikuWrap.style.display='none';
-    if(ok) resolveRound(true);
-    else triggerGameOver('flag_mismatch');
-  }
-});
 
 // ============================================================
 // 描画
@@ -463,7 +365,7 @@ function drawFlagPole(x, colorKey, poleLabel, flagColor){
   if(!drawFlagPole.yMap) drawFlagPole.yMap={};
   const key=colorKey;
   if(drawFlagPole.yMap[key]===undefined) drawFlagPole.yMap[key]=targetY;
-  drawFlagPole.yMap[key] += (targetY-drawFlagPole.yMap[key])*0.18;
+  drawFlagPole.yMap[key] += (targetY-drawFlagPole.yMap[key])*0.2;
   const fy = drawFlagPole.yMap[key];
 
   ctx.fillStyle=flagColor;
@@ -489,82 +391,41 @@ function drawMetronome(){
 }
 function drawInstructionBanner(){
   if(!currentInstruction) return;
+  const showText = (currentInstruction.special==='correction' && !correctionRevealed)
+    ? currentInstruction.text
+    : (currentInstruction.correctedText || currentInstruction.text);
   ctx.fillStyle='rgba(255,255,255,0.85)';
   rr(W/2-260,150,520,74,10); ctx.fill();
-  ctx.strokeStyle='#ffb703'; ctx.lineWidth=2;
+  ctx.strokeStyle = (currentInstruction.special==='correction' && correctionRevealed) ? '#e63946' : '#ffb703';
+  ctx.lineWidth=2;
   rr(W/2-260,150,520,74,10); ctx.stroke();
-  centerText(currentInstruction.text, 180, 14, '#2b2118');
+  centerText(showText, 180, 14, '#2b2118');
 
-  if(phase==='countdown'){
-    const barMs = haikuPrepPending ? HAIKU_PREP_BEATS*beatDurationMs(level) : reactionMsForLevel(level);
-    const remain = clamp(1-(roundTimer/barMs),0,1);
+  const inRealWindow = !(currentInstruction.special==='correction' && !correctionRevealed);
+  if(inRealWindow){
+    const reactionMs = currentReactionMs(roundsCleared);
+    const remain = clamp(1-(roundTimer/reactionMs),0,1);
     ctx.fillStyle='#e0d8c0'; ctx.fillRect(W/2-260, 230, 520, 8);
     ctx.fillStyle = remain<0.3 ? '#e63946' : '#ffb703';
     ctx.fillRect(W/2-260, 230, 520*remain, 8);
   }
 }
-function drawBread(){
-  if(!(phase==='countdown' && currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved)) return;
-  const t = clamp((roundTimer-breadAppearAt)/BREAD_WINDOW_MS,0,1);
-  const {x,y} = breadPos;
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.fillStyle='#e0a458';
-  ctx.beginPath(); ctx.ellipse(0,0,30,22,0,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#c98a3f';
-  ctx.beginPath(); ctx.ellipse(0,4,22,13,0,0,Math.PI*2); ctx.fill();
-  ctx.restore();
-  ctx.strokeStyle = t>0.75 ? '#e63946' : '#ffb703';
-  ctx.lineWidth=4;
-  ctx.beginPath(); ctx.arc(x,y,38,-Math.PI/2,-Math.PI/2+(1-t)*Math.PI*2); ctx.stroke();
-  ctx.font="10px 'Press Start 2P', monospace"; ctx.fillStyle='#2b2118'; ctx.textAlign='center';
-  ctx.fillText('タップ!', x, y-48);
-  ctx.textAlign='left';
-}
-function drawHaikuOverlay(){
-  if(phase!=='haiku') return;
-  ctx.fillStyle='rgba(43,33,24,0.4)'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='rgba(255,255,255,0.95)';
-  rr(W/2-300,150,600,150,12); ctx.fill();
-  ctx.strokeStyle='#ffb703'; ctx.lineWidth=2; rr(W/2-300,150,600,150,12); ctx.stroke();
-
-  ctx.font="9px 'Press Start 2P', monospace"; ctx.fillStyle='#9b8a6a'; ctx.textAlign='center';
-  ctx.fillText('次の句を入力してください', W/2, 178);
-
-  const matched = commonPrefixLen(haikuValue.trim(), HAIKU_TARGET);
-  ctx.font="20px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
-  const chars = HAIKU_TARGET.split('');
-  const totalW = ctx.measureText(HAIKU_TARGET).width;
-  let sx = W/2 - totalW/2;
-  for(let i=0;i<chars.length;i++){
-    ctx.fillStyle = i<matched ? '#2a9d5c' : '#2b2118';
-    ctx.textAlign='left';
-    ctx.fillText(chars[i], sx, 212);
-    sx += ctx.measureText(chars[i]).width;
-  }
-  ctx.textAlign='left';
-
-  const barW=520;
-  ctx.fillStyle='#e0d8c0'; ctx.fillRect(W/2-barW/2, 260, barW, 8);
-  const ratio = clamp(haikuTimeLeft/HAIKU_TIME_LIMIT_MS,0,1);
-  ctx.fillStyle = ratio<0.3 ? '#e63946' : '#ffb703';
-  ctx.fillRect(W/2-barW/2, 260, barW*ratio, 8);
-}
-function commonPrefixLen(a,b){
-  let i=0; while(i<a.length && i<b.length && a[i]===b[i]) i++; return i;
-}
-
 function drawHUD(){
   ctx.font="10px 'Press Start 2P', monospace";
   ctx.fillStyle='rgba(255,255,255,0.75)'; rr(10,10,190,58,8); ctx.fill();
   ctx.fillStyle='#2b2118';
-  ctx.fillText('LEVEL '+level+' / 4', 22, 30);
-  ctx.fillText('ROUND '+roundCount+'/'+ROUNDS_PER_LEVEL, 22, 48);
+  ctx.fillText('ROUNDS '+roundsCleared, 22, 30);
+  ctx.fillText('BEST '+bestRounds, 22, 48);
   ctx.fillStyle='rgba(255,255,255,0.75)'; rr(W-180,10,170,34,8); ctx.fill();
   ctx.fillStyle='#2b2118';
   ctx.fillText('SCORE '+String(score).padStart(6,'0'), W-170, 32);
 }
-
+function drawMilestoneFlash(){
+  if(milestoneFlashTimer<=0) return;
+  ctx.globalAlpha = Math.min(1, milestoneFlashTimer/900);
+  centerText(milestoneText, 110, 14, '#2a9d5c');
+  ctx.globalAlpha=1;
+}
 function drawMissFlash(){
   if(missFlashTimer<=0) return;
   const a = Math.min(0.7, missFlashTimer/650*0.7);
@@ -572,64 +433,33 @@ function drawMissFlash(){
   ctx.fillRect(0,0,W,H);
   centerText('ミス!', H/2, 26, '#fff');
 }
-
 function drawTitleScreen(){
   drawBackground();
   centerText('旗上げビート', H*0.28, 24, '#e63946');
   centerText('- DON\'T MISS A BEAT -', H*0.28+30, 10, '#5a4632');
   ctx.save();
   ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
-  centerText('press ENTER / SPACE / TAP', H*0.58, 12, '#2b2118');
+  centerText('press ENTER / SPACE / TAP', H*0.56, 12, '#2b2118');
   ctx.restore();
-  centerText('ビートに合わせて、指示通りに旗を操作しよう', H*0.7, 10, '#5a4632');
-  centerText('レベル4まで、ミスは即ゲームオーバー', H*0.76, 9, '#5a4632');
-}
-function drawLevelIntro(){
-  drawBackground();
-  drawFlagPole(300,'white','白',  '#fdfaf3');
-  drawFlagPole(660,'red','赤', '#e63946');
-  ctx.fillStyle='rgba(43,33,24,0.35)'; ctx.fillRect(0,0,W,H);
-  centerText('LEVEL '+level, H/2-14, 26, '#fff');
-  const descs = {
-    1:'白・赤の旗をテンポに合わせて操作',
-    2:'+ パンを食え!! が追加',
-    3:'+ 一句読め!! が追加',
-    4:'テンポアップ、全指示が混在'
-  };
-  centerText(descs[level]||'', H/2+22, 10, '#ffe9b0');
+  centerText('指示通りに旗を上げ下げ。「〜ないで」はフェイント', H*0.68, 10, '#5a4632');
+  centerText('だんだん加速。ミスは即ゲームオーバー、どこまで続く?', H*0.74, 9, '#5a4632');
+  if(bestRounds>0) centerText('自己ベスト '+bestRounds+' 連続', H*0.82, 9, '#8a9a5b');
 }
 function drawGameOverScreen(){
   drawBackground();
-  const reasonMap = {
-    flag_mismatch:'指示通りに旗を扱えなかった…',
-    bread_miss:'パンを食べ損ねた…',
-    haiku_timeout:'一句を詠み切れなかった…'
-  };
   centerText('GAME OVER', H*0.28, 24, '#e63946');
-  centerText(reasonMap[gameOverReason]||'指示に従えなかった…', H*0.28+30, 11, '#5a4632');
-  centerText('到達 LEVEL '+level+'　SCORE '+String(score).padStart(6,'0'), H*0.28+62, 11, '#2b2118');
+  centerText('指示通りに旗を扱えなかった…', H*0.28+30, 11, '#5a4632');
+  centerText(roundsCleared+' 連続　SCORE '+String(score).padStart(6,'0'), H*0.28+62, 12, '#2b2118');
+  if(roundsCleared>=bestRounds && roundsCleared>0) centerText('自己ベスト更新!', H*0.28+86, 10, '#2a9d5c');
   ctx.save();
   ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
-  centerText('press ENTER / SPACE / TAP でもう一度', H*0.7, 10, '#2b2118');
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.72, 10, '#2b2118');
   ctx.restore();
 }
-function drawClearScreen(){
-  drawBackground();
-  centerText('全レベルクリア!', H*0.28, 22, '#2a9d5c');
-  centerText('見事、旗上げビートを制覇した', H*0.28+28, 10, '#5a4632');
-  centerText('FINAL SCORE '+String(score).padStart(6,'0'), H*0.28+58, 14, '#2b2118');
-  ctx.save();
-  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
-  centerText('press ENTER / SPACE / TAP でもう一度', H*0.7, 10, '#2b2118');
-  ctx.restore();
-}
-
 function draw(){
   ctx.clearRect(0,0,W,H);
   if(state==='TITLE'){ drawTitleScreen(); return; }
-  if(state==='LEVEL_INTRO'){ drawLevelIntro(); return; }
   if(state==='GAMEOVER'){ drawGameOverScreen(); return; }
-  if(state==='CLEAR'){ drawClearScreen(); return; }
 
   drawBackground();
   drawFlagPole(300,'white','白 (←/A)', '#fdfaf3');
@@ -637,10 +467,9 @@ function draw(){
   drawMetronome();
   if(state==='PLAYING' || state==='GAMEOVER_PENDING'){
     drawInstructionBanner();
-    drawBread();
   }
   drawHUD();
-  drawHaikuOverlay();
+  drawMilestoneFlash();
   drawMissFlash();
 }
 
@@ -648,7 +477,6 @@ function draw(){
 // オーディオエンジン
 // ============================================================
 let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
-let breadBuffer=null, haikuBuffer=null, voiceLoadStarted=false;
 function ensureAudio(){
   if(audioCtx) return;
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -659,26 +487,8 @@ function ensureAudio(){
   sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.6;
   musicGain.connect(masterGain); sfxGain.connect(masterGain);
   masterGain.connect(audioCtx.destination);
-  loadVoiceClips();
 }
 function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
-async function loadVoiceClips(){
-  if(voiceLoadStarted || !audioCtx) return;
-  voiceLoadStarted = true;
-  try{
-    const [r1,r2] = await Promise.all([fetch('voice-bread.mp3'), fetch('voice-haiku.mp3')]);
-    const [a1,a2] = await Promise.all([r1.arrayBuffer(), r2.arrayBuffer()]);
-    breadBuffer = await audioCtx.decodeAudioData(a1);
-    haikuBuffer = await audioCtx.decodeAudioData(a2);
-  } catch(e){ /* 音声ファイルが見つからない場合は無音でフォールバック */ }
-}
-function playVoice(which){
-  ensureAudio(); if(!audioCtx) return;
-  const buf = which==='bread' ? breadBuffer : haikuBuffer;
-  if(!buf) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = buf; src.connect(sfxGain); src.start(0);
-}
 
 let droneOsc=null, dronePlaying=false;
 function startAmbient(){
@@ -694,7 +504,6 @@ function stopAmbient(){
   dronePlaying=false;
   try{ droneOsc.stop(); }catch(e){}
 }
-
 function playTick(accent){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
@@ -713,15 +522,15 @@ function playToggleSound(){
   osc.connect(gain); gain.connect(sfxGain);
   osc.start(t0); osc.stop(t0+0.12);
 }
-function playHitSound(){
+function playMilestoneJingle(){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
-  [660,880].forEach((f,i)=>{
+  [523,659,784].forEach((f,i)=>{
     const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
-    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.06);
-    gain.gain.setValueAtTime(0.18,t0+i*0.06); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.06+0.12);
+    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.09);
+    gain.gain.setValueAtTime(0.001,t0+i*0.09); gain.gain.linearRampToValueAtTime(0.18,t0+i*0.09+0.02); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.09+0.18);
     osc.connect(gain); gain.connect(sfxGain);
-    osc.start(t0+i*0.06); osc.stop(t0+i*0.06+0.14);
+    osc.start(t0+i*0.09); osc.stop(t0+i*0.09+0.2);
   });
 }
 function playMissSound(){
@@ -750,18 +559,6 @@ function playGameOverJingle(){
     osc.start(t0+i*0.18); osc.stop(t0+i*0.18+0.4);
   });
 }
-function playClearJingle(){
-  ensureAudio(); if(!audioCtx) return;
-  const t0=audioCtx.currentTime;
-  const notes=[523,659,784,1047,784,1047];
-  notes.forEach((f,i)=>{
-    const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
-    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.12);
-    gain.gain.setValueAtTime(0.001,t0+i*0.12); gain.gain.linearRampToValueAtTime(0.22,t0+i*0.12+0.02); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.12+0.24);
-    osc.connect(gain); gain.connect(sfxGain);
-    osc.start(t0+i*0.12); osc.stop(t0+i*0.12+0.26);
-  });
-}
 
 const btnMute=document.getElementById('btn-mute');
 btnMute.addEventListener('click', ()=>{
@@ -775,35 +572,19 @@ btnMute.addEventListener('click', ()=>{
 // 入力
 // ============================================================
 function handleConfirmKey(){
-  if(state==='TITLE' || state==='GAMEOVER' || state==='CLEAR') startGame();
-  else if(state==='PLAYING') tryHitBread();
+  if(state==='TITLE' || state==='GAMEOVER') startGame();
 }
 window.addEventListener('keydown',(e)=>{
-  if(document.activeElement===haikuInput) {
-    if(e.code==='Enter') e.preventDefault();
-    return;
-  }
   if(['ArrowLeft','KeyA'].includes(e.code)) toggleFlag('white');
   if(['ArrowRight','KeyD'].includes(e.code)) toggleFlag('red');
   if(['Enter','Space'].includes(e.code)){ handleConfirmKey(); e.preventDefault(); }
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
 });
-
 document.getElementById('btn-white-flag').addEventListener('pointerdown',(e)=>{ e.preventDefault(); toggleFlag('white'); });
 document.getElementById('btn-red-flag').addEventListener('pointerdown',(e)=>{ e.preventDefault(); toggleFlag('red'); });
 
-function getCanvasPos(clientX, clientY){
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = W/rect.width, scaleY = H/rect.height;
-  return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
-}
-canvas.addEventListener('click', (e)=>{
-  if(state==='TITLE' || state==='GAMEOVER' || state==='CLEAR'){ startGame(); return; }
-  if(state!=='PLAYING' || phase!=='countdown') return;
-  const p = getCanvasPos(e.clientX, e.clientY);
-  if(currentInstruction && currentInstruction.special==='bread' && breadShown && !breadResolved){
-    if(Math.hypot(p.x-breadPos.x, p.y-breadPos.y) < 46) tryHitBread();
-  }
+canvas.addEventListener('click', ()=>{
+  if(state==='TITLE' || state==='GAMEOVER'){ startGame(); }
 });
 
 // ============================================================
