@@ -213,7 +213,7 @@ function beginArc(fromX, comboLevel){
   const duration = arcDurationFor(comboLevel);
   const peak = peakHeightFor(comboLevel);
   const win = windowMsFor(comboLevel);
-  arc = { startX:fromX, endX:fromX+dist, duration, elapsed:0, peak, windowMs:win, resolved:false };
+  arc = { startX:fromX, endX:fromX+dist, duration, elapsed:0, peak, windowMs:win, resolved:false, windowOpened:false };
 }
 function stonePos(){
   if(!arc) return {x:START_X,y:WATER_Y};
@@ -371,6 +371,11 @@ function update(dt){
   }
   if(arc && !arc.resolved){
     arc.elapsed += dt*16.6667;
+    const remaining = arc.duration - arc.elapsed;
+    if(!arc.windowOpened && remaining <= arc.windowMs){
+      arc.windowOpened = true;
+      playWindowOpenCue();
+    }
     if(arc.elapsed >= arc.duration){
       arc.elapsed = arc.duration;
       triggerGameOver('miss');
@@ -542,6 +547,14 @@ function drawStone(camX){
   if(!arc) return;
   const pos = stonePos();
   const sx = pos.x-camX, sy = pos.y;
+
+  // 影(石の真下、水面に投影)。着水点までの距離感をつかみやすくする
+  if(!arc.resolved){
+    const shadowScale = 0.5 + (sy/WATER_Y)*0.5;
+    ctx.fillStyle='rgba(20,30,40,0.25)';
+    ctx.beginPath(); ctx.ellipse(sx,WATER_Y,8*shadowScale,3*shadowScale,0,0,Math.PI*2); ctx.fill();
+  }
+
   ctx.save();
   ctx.translate(sx,sy);
   ctx.rotate(performance.now()/120);
@@ -550,14 +563,49 @@ function drawStone(camX){
   ctx.fillStyle='#8a8f97';
   ctx.beginPath(); ctx.ellipse(-2,-2,4,2.4,0,0,Math.PI*2); ctx.fill();
   ctx.restore();
-  // 着水点の目安リング
-  if(!arc.resolved){
-    const ex = arc.endX-camX;
-    const t = clamp(arc.elapsed/arc.duration,0,1);
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(ex,WATER_Y,16-10*t,0,Math.PI*2); ctx.stroke();
+
+  drawLandingIndicator(camX);
+}
+function drawLandingIndicator(camX){
+  if(!arc || arc.resolved) return;
+  const ex = arc.endX-camX;
+  const remaining = arc.duration - arc.elapsed;
+  const windowOpen = remaining <= arc.windowMs;
+
+  if(!windowOpen){
+    // まだ判定窓が開いていない: 控えめな着地予告マーカー
+    ctx.strokeStyle='rgba(255,255,255,0.4)';
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.arc(ex,WATER_Y,10,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    return;
   }
+
+  // 判定窓オープン中:大きくはっきり、質に応じて色を変えながら縮む
+  const winRatio = clamp(remaining/arc.windowMs, 0, 1); // 1=開いた直後 → 0=閉じる瞬間
+  const quality = judgeQuality(remaining, arc.windowMs);
+  const col = quality==='perfect' ? '255,183,3' : quality==='great' ? '42,157,92' : '255,255,255';
+  const outerR = 10 + 26*winRatio;
+  const pulse = 1 + Math.sin(performance.now()/60)*0.06;
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(${col},0.95)`;
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(ex,WATER_Y,outerR*pulse,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = `rgba(${col},0.35)`;
+  ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.arc(ex,WATER_Y,outerR*pulse,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.75+0.25*Math.sin(performance.now()/70);
+  ctx.font="11px 'Press Start 2P', monospace";
+  ctx.fillStyle = `rgb(${col})`;
+  ctx.textAlign='center';
+  ctx.fillText('CLICK!', ex, WATER_Y-46);
+  ctx.textAlign='left';
+  ctx.restore();
 }
 function drawSplashParticles(camX){
   for(const p of splashParticles){
@@ -769,6 +817,15 @@ function stopBgm(){
   if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; }
 }
 
+function playWindowOpenCue(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.setValueAtTime(720,t0);
+  gain.gain.setValueAtTime(0.001,t0); gain.gain.linearRampToValueAtTime(0.1,t0+0.015); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.09);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.1);
+}
 function playBounceSound(comboN, quality){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
