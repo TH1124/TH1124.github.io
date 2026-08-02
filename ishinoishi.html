@@ -497,18 +497,20 @@ function drawShoreCharacter(){
   ctx.beginPath(); ctx.arc(0,-84,3,0.2,Math.PI-0.2); ctx.stroke();
   ctx.restore();
 }
-function drawSpeechBubble(){
+function drawBottomCaption(){
   if(speechTimer<=0 || !speechText) return;
-  const bx=110, by=380, bw=Math.max(160, speechText.length*13+30), bh=48;
+  const bh=44, by=H-58;
+  ctx.font="13px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
+  const tw = ctx.measureText(speechText).width;
+  const bw = Math.min(W-40, tw+50);
+  const bx = W/2-bw/2;
   ctx.globalAlpha = Math.min(1, speechTimer/2600*3);
-  ctx.fillStyle='rgba(255,255,255,0.95)';
-  rr(bx,by-bh,bw,bh,10); ctx.fill();
-  ctx.strokeStyle='#3a5a78'; ctx.lineWidth=2; rr(bx,by-bh,bw,bh,10); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(bx+16,by); ctx.lineTo(bx+30,by); ctx.lineTo(bx+14,by+14); ctx.closePath();
-  ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
-  ctx.font="12px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
-  ctx.fillStyle='#20303f'; ctx.textAlign='left';
-  ctx.fillText(speechText, bx+14, by-bh/2+5);
+  ctx.fillStyle='rgba(20,25,35,0.72)';
+  rr(bx,by,bw,bh,10); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1.5; rr(bx,by,bw,bh,10); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.textAlign='center';
+  ctx.fillText(speechText, W/2, by+bh/2+5);
+  ctx.textAlign='left';
   ctx.globalAlpha=1;
 }
 function drawStoneTrail(camX){
@@ -679,8 +681,7 @@ function draw(){
     ctx.fillStyle = tierColors[Math.min(3,comboFlashTier)];
     ctx.fillRect(0,0,W,H);
   }
-  drawShoreCharacter();
-  drawSpeechBubble();
+  drawBottomCaption();
   drawHUD();
   ctx.restore();
 }
