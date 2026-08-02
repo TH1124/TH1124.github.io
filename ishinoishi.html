@@ -78,7 +78,7 @@
 
   <div class="hint2">
     操作は <b>クリック / タップ / Space</b> だけ。石が水面に落ちる瞬間に合わせて押すと跳ねる。<br>
-    コンボが続くほど加速し、1回のバウンドで飛ぶ距離も伸びる。タイミングを外す、早すぎる、サメに食われる…でコンボ終了。
+    コンボが続くほど加速し、1回のバウンドで飛ぶ距離も伸びる。タイミングを外す、早すぎるとコンボ終了。
   </div>
 
   <div style="max-width:640px;text-align:center;">
@@ -132,16 +132,10 @@ const BASE_ARC_MS = 950, ARC_MS_DECREMENT = 14, MIN_ARC_MS = 380;
 const BASE_WINDOW_MS = 260, WINDOW_DECREMENT = 3.5, MIN_WINDOW_MS = 130;
 const ARC_PEAK_BASE = 72;
 
-const SHARK_MIN_DISTANCE = 120;
-const SHARK_COOLDOWN_BOUNCES = 6;
-const SHARK_QTE_BASE_MS = 620;
-
 function bounceDist(combo){ return Math.min(MAX_BOUNCE_DIST, BASE_BOUNCE_DIST + combo*DIST_PER_COMBO); }
 function arcDurationFor(combo){ return Math.max(MIN_ARC_MS, BASE_ARC_MS - combo*ARC_MS_DECREMENT); }
 function windowMsFor(combo){ return Math.max(MIN_WINDOW_MS, BASE_WINDOW_MS - combo*WINDOW_DECREMENT); }
 function peakHeightFor(combo){ return Math.max(28, ARC_PEAK_BASE - combo*0.8); }
-function sharkChanceFor(combo){ return Math.min(0.35, 0.10 + combo*0.003); }
-function sharkWindowFor(combo){ return Math.max(350, SHARK_QTE_BASE_MS - combo*4); }
 
 // ============================================================
 // 距離のたとえ表(結果画面用)
@@ -195,14 +189,12 @@ let state='TITLE'; // TITLE, PROLOGUE, PLAYING, GAMEOVER
 let prologueIndex=0;
 let combo=0, totalDistance=0, bestDistance=0, bestCombo=0;
 let arc=null;
-let bouncesSinceShark=999;
 let shownMilestones=new Set();
 let speechText='', speechTimer=0;
 let judgeText='', judgeTimer=0, judgeTier='';
 let comboFlashTimer=0, comboFlashTier=0;
 let shakeTimer=0, shakeMag=0;
 let pendingGameOver=false, failTimer=0, failReason='';
-let sharkWarnTimer=0;
 let splashParticles=[];
 
 function seedRand(seed){
@@ -216,13 +208,12 @@ let camXNow=0, finalCamX=0;
 // ============================================================
 // アーク(石の1バウンド分の軌道)制御
 // ============================================================
-function beginArc(fromX, comboLevel, isShark){
+function beginArc(fromX, comboLevel){
   const dist = bounceDist(comboLevel);
   const duration = arcDurationFor(comboLevel);
   const peak = peakHeightFor(comboLevel);
-  const win = isShark ? sharkWindowFor(comboLevel) : windowMsFor(comboLevel);
-  arc = { startX:fromX, endX:fromX+dist, duration, elapsed:0, peak, windowMs:win, resolved:false, isShark:!!isShark };
-  if(isShark){ bouncesSinceShark=0; sharkWarnTimer=500; } else { bouncesSinceShark++; }
+  const win = windowMsFor(comboLevel);
+  arc = { startX:fromX, endX:fromX+dist, duration, elapsed:0, peak, windowMs:win, resolved:false };
 }
 function stonePos(){
   if(!arc) return {x:START_X,y:WATER_Y};
@@ -293,8 +284,7 @@ function resolveSuccess(quality){
   spawnSplash(pos.x, WATER_Y, 10+Math.min(20,combo), 1+combo*0.03);
   triggerComboEffects(combo, quality);
   if(combo%10===0) playComboFanfare();
-  const doShark = (totalDistance>=SHARK_MIN_DISTANCE && bouncesSinceShark>=SHARK_COOLDOWN_BOUNCES && Math.random()<sharkChanceFor(combo));
-  beginArc(arc.endX, combo, doShark);
+  beginArc(arc.endX, combo);
 }
 
 function attemptBounce(){
@@ -311,7 +301,7 @@ function attemptBounce(){
   if(remaining <= arc.windowMs){
     resolveSuccess(judgeQuality(remaining, arc.windowMs));
   } else {
-    triggerGameOver(arc.isShark ? 'shark' : 'early');
+    triggerGameOver('early');
   }
 }
 
@@ -319,10 +309,10 @@ function triggerGameOver(reason){
   if(pendingGameOver || state!=='PLAYING') return;
   failReason = reason;
   pendingGameOver = true;
-  failTimer = reason==='shark' ? 850 : 700;
+  failTimer = 700;
   const pos = stonePos();
   spawnSplash(pos.x, WATER_Y, 22, 1.6);
-  shakeTimer=260; shakeMag = reason==='shark'?16:9;
+  shakeTimer=260; shakeMag = 9;
   playFailSound(reason);
   stopBgm();
 }
@@ -361,7 +351,6 @@ function update(dt){
   if(comboFlashTimer>0) comboFlashTimer-=dt*16.6667;
   if(speechTimer>0) speechTimer-=dt*16.6667;
   if(judgeTimer>0) judgeTimer-=dt*16.6667;
-  if(sharkWarnTimer>0) sharkWarnTimer-=dt*16.6667;
 
   if(state==='TITLE' || state==='PROLOGUE'){ updateAtmosphere(dt); return; }
 
@@ -384,7 +373,7 @@ function update(dt){
     arc.elapsed += dt*16.6667;
     if(arc.elapsed >= arc.duration){
       arc.elapsed = arc.duration;
-      triggerGameOver(arc.isShark ? 'shark' : 'miss');
+      triggerGameOver('miss');
     }
   }
 }
@@ -565,28 +554,9 @@ function drawStone(camX){
   if(!arc.resolved){
     const ex = arc.endX-camX;
     const t = clamp(arc.elapsed/arc.duration,0,1);
-    ctx.strokeStyle = arc.isShark ? 'rgba(230,57,70,0.55)' : 'rgba(255,255,255,0.5)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(ex,WATER_Y,16-10*t,0,Math.PI*2); ctx.stroke();
-  }
-}
-function drawSharkWarning(camX){
-  if(!(arc && arc.isShark && !arc.resolved)) return;
-  const ex = arc.endX-camX;
-  const t = clamp(arc.elapsed/arc.duration,0,1);
-  if(t<0.35) return;
-  ctx.save();
-  ctx.translate(ex, WATER_Y+6);
-  const bob = Math.sin(performance.now()/90)*3;
-  ctx.fillStyle='#2b3a4a';
-  ctx.beginPath();
-  ctx.moveTo(0,bob); ctx.lineTo(-14,18+bob); ctx.lineTo(14,18+bob); ctx.closePath(); ctx.fill();
-  ctx.restore();
-  if(sharkWarnTimer>0 || t>0.6){
-    ctx.save();
-    ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/70);
-    centerText('よけろ!', WATER_Y-60, 16, '#e63946');
-    ctx.restore();
   }
 }
 function drawSplashParticles(camX){
@@ -670,8 +640,7 @@ function drawGameOverScreen(){
   ctx.fillStyle='rgba(15,20,30,0.55)'; ctx.fillRect(0,0,W,H);
   const reasonMap = {
     miss:'タイミングを外して沈んだ…',
-    early:'焦って早く押しすぎた…',
-    shark:'サメに驚いて石を落とした…'
+    early:'焦って早く押しすぎた…'
   };
   centerText('GAME OVER', H*0.2, 22, '#fff');
   centerText(reasonMap[failReason]||'コンボが途切れた…', H*0.2+28, 10, '#ffe9c9');
@@ -714,7 +683,6 @@ function draw(){
   drawSplashParticles(camX);
   drawStoneTrail(camX);
   drawStone(camX);
-  drawSharkWarning(camX);
   drawForegroundLayer(camX);
   if(comboFlashTimer>0){
     const tierColors=['rgba(58,90,120,0.12)','rgba(42,157,92,0.14)','rgba(255,183,3,0.16)','rgba(230,57,70,0.18)'];
@@ -836,7 +804,7 @@ function playFailSound(reason){
   playNoiseBurst(0.35,0.28,1200,100,sfxGain);
   const t0=audioCtx.currentTime;
   const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
-  osc.type='sawtooth'; osc.frequency.setValueAtTime(reason==='shark'?260:180,t0); osc.frequency.exponentialRampToValueAtTime(50,t0+0.4);
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(180,t0); osc.frequency.exponentialRampToValueAtTime(50,t0+0.4);
   gain.gain.setValueAtTime(0.25,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.42);
   osc.connect(gain); gain.connect(sfxGain);
   osc.start(t0); osc.stop(t0+0.44);
