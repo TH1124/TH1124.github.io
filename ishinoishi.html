@@ -198,6 +198,7 @@ let arc=null;
 let bouncesSinceShark=999;
 let shownMilestones=new Set();
 let speechText='', speechTimer=0;
+let judgeText='', judgeTimer=0, judgeTier='';
 let comboFlashTimer=0, comboFlashTier=0;
 let shakeTimer=0, shakeMag=0;
 let pendingGameOver=false, failTimer=0, failReason='';
@@ -257,24 +258,40 @@ function spawnSplash(x,y,n,power){
   }
 }
 
-function triggerComboEffects(newCombo){
+function triggerComboEffects(newCombo, quality){
   comboFlashTimer=380;
   comboFlashTier = newCombo>=30?3 : newCombo>=15?2 : newCombo>=5?1 : 0;
   shakeTimer=180; shakeMag = 3+comboFlashTier*3;
+  if(quality==='perfect'){ shakeMag+=2; comboFlashTimer+=100; }
   if(newCombo%10===0){
     comboFlashTimer=600; shakeMag=10+comboFlashTier*2;
   }
 }
 
-function resolveSuccess(){
+const QUALITY_BONUS = { perfect:1.25, great:1.1, good:1.0 };
+function judgeQuality(remaining, windowMs){
+  const ratio = remaining/windowMs;
+  if(ratio <= 0.22) return 'perfect';
+  if(ratio <= 0.55) return 'great';
+  return 'good';
+}
+function showJudge(quality){
+  judgeText = quality.toUpperCase();
+  judgeTier = quality;
+  judgeTimer = 550;
+}
+
+function resolveSuccess(quality){
   arc.resolved = true;
   combo++;
-  totalDistance += (arc.endX-arc.startX);
+  const dist = (arc.endX-arc.startX) * QUALITY_BONUS[quality];
+  totalDistance += dist;
   checkMilestones();
-  playBounceSound(combo);
+  playBounceSound(combo, quality);
+  showJudge(quality);
   const pos = stonePos();
   spawnSplash(pos.x, WATER_Y, 10+Math.min(20,combo), 1+combo*0.03);
-  triggerComboEffects(combo);
+  triggerComboEffects(combo, quality);
   if(combo%10===0) playComboFanfare();
   const doShark = (totalDistance>=SHARK_MIN_DISTANCE && bouncesSinceShark>=SHARK_COOLDOWN_BOUNCES && Math.random()<sharkChanceFor(combo));
   beginArc(arc.endX, combo, doShark);
@@ -292,7 +309,7 @@ function attemptBounce(){
 
   const remaining = arc.duration - arc.elapsed;
   if(remaining <= arc.windowMs){
-    resolveSuccess();
+    resolveSuccess(judgeQuality(remaining, arc.windowMs));
   } else {
     triggerGameOver(arc.isShark ? 'shark' : 'early');
   }
@@ -318,6 +335,7 @@ function startRun(){
   stoneTrail=[];
   pendingGameOver=false; failTimer=0;
   speechText=''; speechTimer=0;
+  judgeText=''; judgeTimer=0;
   comboFlashTimer=0; shakeTimer=0;
   state='PLAYING';
   beginArc(START_X, 0, false);
@@ -342,6 +360,7 @@ function update(dt){
   if(shakeTimer>0) shakeTimer-=dt*16.6667;
   if(comboFlashTimer>0) comboFlashTimer-=dt*16.6667;
   if(speechTimer>0) speechTimer-=dt*16.6667;
+  if(judgeTimer>0) judgeTimer-=dt*16.6667;
   if(sharkWarnTimer>0) sharkWarnTimer-=dt*16.6667;
 
   if(state==='TITLE' || state==='PROLOGUE'){ updateAtmosphere(dt); return; }
@@ -578,6 +597,27 @@ function drawSplashParticles(camX){
   }
   ctx.globalAlpha=1;
 }
+function drawJudgeText(){
+  if(judgeTimer<=0 || !judgeText) return;
+  const styles = {
+    perfect:{color:'#ffb703', size:22},
+    great:{color:'#2a9d5c', size:18},
+    good:{color:'#fff', size:15}
+  };
+  const st = styles[judgeTier] || styles.good;
+  const p = 1-(judgeTimer/550);
+  const scale = 1 + Math.max(0,0.35-p*0.35);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, judgeTimer/550*2.2);
+  ctx.translate(W/2, 190);
+  ctx.scale(scale,scale);
+  ctx.font=st.size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=st.color; ctx.textAlign='center';
+  ctx.fillText(judgeText, 0, 0);
+  ctx.textAlign='left';
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
 function drawHUD(){
   const d = Math.floor(currentDisplayDistance());
   ctx.font="14px 'Press Start 2P', monospace";
@@ -604,7 +644,7 @@ function drawHUD(){
   }
 }
 function drawTitleScreen(){
-  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX); drawShoreCharacter();
+  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX);
   ctx.fillStyle='rgba(20,20,30,0.25)'; ctx.fillRect(0,0,W,H);
   centerText('石の意思', H*0.28, 26, '#fff');
   centerText('- STILL GOT IT -', H*0.28+30, 10, '#ffe9c9');
@@ -616,7 +656,7 @@ function drawTitleScreen(){
   if(bestDistance>0) centerText('自己ベスト '+Math.floor(bestDistance)+'m / '+bestCombo+'コンボ', H*0.78, 9, '#ffe9c9');
 }
 function drawProlgoueScreen(){
-  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX); drawShoreCharacter();
+  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX);
   ctx.fillStyle='rgba(20,20,30,0.35)'; ctx.fillRect(0,0,W,H);
   const line = PROLOGUE_LINES[prologueIndex] || '';
   centerText(line, H*0.62, 14, '#fff');
@@ -681,6 +721,7 @@ function draw(){
     ctx.fillStyle = tierColors[Math.min(3,comboFlashTier)];
     ctx.fillRect(0,0,W,H);
   }
+  drawJudgeText();
   drawBottomCaption();
   drawHUD();
   ctx.restore();
@@ -760,16 +801,24 @@ function stopBgm(){
   if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; }
 }
 
-function playBounceSound(comboN){
+function playBounceSound(comboN, quality){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
-  const freq = 420*(1+Math.min(0.9,comboN*0.02));
+  const qualityMul = quality==='perfect'?1.3 : quality==='great'?1.12 : 1.0;
+  const freq = 420*(1+Math.min(0.9,comboN*0.02))*qualityMul;
   const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
   osc.type='square'; osc.frequency.setValueAtTime(freq,t0); osc.frequency.exponentialRampToValueAtTime(freq*1.5,t0+0.06);
   gain.gain.setValueAtTime(0.18,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.1);
   osc.connect(gain); gain.connect(sfxGain);
   osc.start(t0); osc.stop(t0+0.12);
   playNoiseBurst(0.08,0.1,2200,700,sfxGain);
+  if(quality==='perfect'){
+    const osc2=audioCtx.createOscillator(); const gain2=audioCtx.createGain();
+    osc2.type='square'; osc2.frequency.setValueAtTime(freq*1.5,t0+0.05);
+    gain2.gain.setValueAtTime(0.001,t0+0.05); gain2.gain.linearRampToValueAtTime(0.14,t0+0.06); gain2.gain.exponentialRampToValueAtTime(0.001,t0+0.16);
+    osc2.connect(gain2); gain2.connect(sfxGain);
+    osc2.start(t0+0.05); osc2.stop(t0+0.18);
+  }
 }
 function playComboFanfare(){
   ensureAudio(); if(!audioCtx) return;
