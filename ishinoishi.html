@@ -204,10 +204,13 @@ let pendingGameOver=false, failTimer=0, failReason='';
 let sharkWarnTimer=0;
 let splashParticles=[];
 
-let bgParticles=[];
-for(let i=0;i<20;i++){
-  bgParticles.push({ x:Math.random()*W, y:20+Math.random()*160, vx:0.08+Math.random()*0.15, r:10+Math.random()*18, a:0.3+Math.random()*0.3 });
+function seedRand(seed){
+  const x = Math.sin(seed*12.9898)*43758.5453;
+  return x - Math.floor(x);
 }
+let stoneTrail=[];
+let idleScrollX=0;
+let camXNow=0, finalCamX=0;
 
 // ============================================================
 // アーク(石の1バウンド分の軌道)制御
@@ -312,6 +315,7 @@ function startRun(){
   combo=0; totalDistance=0;
   shownMilestones=new Set();
   splashParticles=[];
+  stoneTrail=[];
   pendingGameOver=false; failTimer=0;
   speechText=''; speechTimer=0;
   comboFlashTimer=0; shakeTimer=0;
@@ -324,7 +328,7 @@ function startRun(){
 // 更新
 // ============================================================
 function updateAtmosphere(dt){
-  for(const p of bgParticles){ p.x+=p.vx*dt; if(p.x-p.r>W) p.x=-p.r; }
+  idleScrollX += dt*0.35;
 }
 function updateSplash(dt){
   for(const p of splashParticles){
@@ -352,6 +356,7 @@ function update(dt){
       pendingGameOver=false;
       bestDistance = Math.max(bestDistance, totalDistance);
       bestCombo = Math.max(bestCombo, combo);
+      finalCamX = camXNow;
       state='GAMEOVER';
     }
     return;
@@ -375,31 +380,81 @@ function centerText(text,y,size,color){
   lines.forEach((ln,i)=> ctx.fillText(ln, W/2, y+i*(size+8)));
   ctx.textAlign='left';
 }
-function drawSky(){
+function drawParallaxLayer(camX, factor, spacing, baseY, drawFn){
+  const scrollX = camX*factor;
+  const i0 = Math.floor((scrollX-120)/spacing);
+  const i1 = Math.floor((scrollX+W+120)/spacing);
+  for(let i=i0;i<=i1;i++){
+    const worldX = i*spacing + seedRand(i*7.13)*spacing*0.6;
+    const sx = worldX - scrollX;
+    const jitterY = (seedRand(i*3.7)-0.5)*18;
+    const size = 0.7+seedRand(i*5.2)*0.7;
+    drawFn(sx, baseY+jitterY, size, i);
+  }
+}
+function drawMountain(sx,sy,size){
+  ctx.fillStyle='rgba(120,110,150,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(sx-70*size, sy);
+  ctx.lineTo(sx, sy-90*size);
+  ctx.lineTo(sx+70*size, sy);
+  ctx.closePath(); ctx.fill();
+}
+function drawCloud(sx,sy,size){
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(sx,sy,26*size,12*size,0,0,Math.PI*2);
+  ctx.ellipse(sx+18*size,sy+3*size,17*size,9*size,0,0,Math.PI*2);
+  ctx.ellipse(sx-16*size,sy+3*size,16*size,8*size,0,0,Math.PI*2);
+  ctx.fill();
+}
+function drawShoreTree(sx,sy,size){
+  ctx.fillStyle='rgba(50,70,50,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(sx,sy-26*size,16*size,20*size,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillRect(sx-2.5*size,sy-10*size,5*size,12*size);
+}
+function drawForegroundReed(sx,sy,size){
+  ctx.strokeStyle='rgba(30,50,30,0.6)';
+  ctx.lineWidth=3*size;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(sx,sy);
+  ctx.quadraticCurveTo(sx+6*size,sy-30*size, sx+2*size,sy-52*size);
+  ctx.stroke();
+}
+
+function drawSky(camX){
   const g=ctx.createLinearGradient(0,0,0,WATER_Y);
   g.addColorStop(0,'#ffd9a0'); g.addColorStop(0.5,'#ffb08a'); g.addColorStop(1,'#f7dfc0');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,WATER_Y);
-  ctx.fillStyle='rgba(255,255,255,0.55)';
-  for(const p of bgParticles){
-    ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.5,0,0,Math.PI*2);
-    ctx.globalAlpha=p.a; ctx.fill(); ctx.globalAlpha=1;
-  }
-  const sun = ctx.createRadialGradient(120,90,0,120,90,90);
+
+  const sunX = 150 - camX*0.03;
+  const sun = ctx.createRadialGradient(sunX,90,0,sunX,90,90);
   sun.addColorStop(0,'rgba(255,244,214,0.9)'); sun.addColorStop(1,'rgba(255,244,214,0)');
-  ctx.fillStyle=sun; ctx.beginPath(); ctx.arc(120,90,90,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=sun; ctx.beginPath(); ctx.arc(sunX,90,90,0,Math.PI*2); ctx.fill();
+
+  drawParallaxLayer(camX, 0.06, 340, 240, drawMountain);
+  drawParallaxLayer(camX, 0.14, 260, 75, drawCloud);
+  drawParallaxLayer(camX, 0.36, 150, WATER_Y-4, drawShoreTree);
 }
 function drawWater(camX){
   const g=ctx.createLinearGradient(0,WATER_Y,0,H);
   g.addColorStop(0,'#4f90b0'); g.addColorStop(1,'#1e4a63');
   ctx.fillStyle=g; ctx.fillRect(0,WATER_Y,W,H-WATER_Y);
-  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1;
-  for(let i=0;i<7;i++){
-    const y = WATER_Y+20+i*22;
-    const off = (camX*0.4 + i*40)%80;
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1.4;
+  for(let i=0;i<9;i++){
+    const y = WATER_Y+16+i*18;
+    const speed = 0.4+i*0.03;
+    const off = (camX*speed + i*37)%74;
     ctx.beginPath();
-    for(let x=-off; x<W+40; x+=40){ ctx.moveTo(x,y); ctx.lineTo(x+20,y); }
+    for(let x=-off; x<W+40; x+=74){ ctx.moveTo(x,y); ctx.lineTo(x+34,y); }
     ctx.stroke();
   }
+}
+function drawForegroundLayer(camX){
+  drawParallaxLayer(camX, 0.85, 90, H+4, drawForegroundReed);
 }
 function drawShoreCharacter(){
   // 固定HUD位置(左下)に立つサラリーマン
@@ -455,6 +510,23 @@ function drawSpeechBubble(){
   ctx.fillStyle='#20303f'; ctx.textAlign='left';
   ctx.fillText(speechText, bx+14, by-bh/2+5);
   ctx.globalAlpha=1;
+}
+function drawStoneTrail(camX){
+  if(stoneTrail.length<2) return;
+  const speedTier = Math.min(3, Math.floor(combo/10));
+  const colors=['107,111,118','42,157,92','255,183,3','230,57,70'];
+  const col = colors[speedTier];
+  ctx.lineWidth = 3+speedTier*1.2;
+  ctx.lineCap='round';
+  for(let i=1;i<stoneTrail.length;i++){
+    const a = stoneTrail[i-1], b = stoneTrail[i];
+    const alpha = (i/stoneTrail.length)*0.6;
+    ctx.strokeStyle = `rgba(${col},${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(a.x-camX, a.y);
+    ctx.lineTo(b.x-camX, b.y);
+    ctx.stroke();
+  }
 }
 function drawStone(camX){
   if(!arc) return;
@@ -530,7 +602,7 @@ function drawHUD(){
   }
 }
 function drawTitleScreen(){
-  drawSky(); drawWater(0); drawShoreCharacter();
+  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX); drawShoreCharacter();
   ctx.fillStyle='rgba(20,20,30,0.25)'; ctx.fillRect(0,0,W,H);
   centerText('石の意思', H*0.28, 26, '#fff');
   centerText('- STILL GOT IT -', H*0.28+30, 10, '#ffe9c9');
@@ -542,7 +614,7 @@ function drawTitleScreen(){
   if(bestDistance>0) centerText('自己ベスト '+Math.floor(bestDistance)+'m / '+bestCombo+'コンボ', H*0.78, 9, '#ffe9c9');
 }
 function drawProlgoueScreen(){
-  drawSky(); drawWater(0); drawShoreCharacter();
+  drawSky(idleScrollX); drawWater(idleScrollX); drawForegroundLayer(idleScrollX); drawShoreCharacter();
   ctx.fillStyle='rgba(20,20,30,0.35)'; ctx.fillRect(0,0,W,H);
   const line = PROLOGUE_LINES[prologueIndex] || '';
   centerText(line, H*0.62, 14, '#fff');
@@ -552,7 +624,7 @@ function drawProlgoueScreen(){
   ctx.restore();
 }
 function drawGameOverScreen(){
-  drawSky(); drawWater(0);
+  drawSky(finalCamX); drawWater(finalCamX); drawForegroundLayer(finalCamX);
   ctx.fillStyle='rgba(15,20,30,0.55)'; ctx.fillRect(0,0,W,H);
   const reasonMap = {
     miss:'タイミングを外して沈んだ…',
@@ -583,17 +655,25 @@ function draw(){
 
   const stone = stonePos();
   let camX = clamp(stone.x - 300, 0, Infinity);
+  camXNow = camX;
+
+  if(state==='PLAYING' && !pendingGameOver){
+    stoneTrail.push({x:stone.x, y:stone.y});
+    if(stoneTrail.length>16) stoneTrail.shift();
+  }
 
   ctx.save();
   if(shakeTimer>0){
     const m = shakeMag*(shakeTimer/260);
     ctx.translate((Math.random()-0.5)*m, (Math.random()-0.5)*m);
   }
-  drawSky();
+  drawSky(camX);
   drawWater(camX);
   drawSplashParticles(camX);
+  drawStoneTrail(camX);
   drawStone(camX);
   drawSharkWarning(camX);
+  drawForegroundLayer(camX);
   if(comboFlashTimer>0){
     const tierColors=['rgba(58,90,120,0.12)','rgba(42,157,92,0.14)','rgba(255,183,3,0.16)','rgba(230,57,70,0.18)'];
     ctx.fillStyle = tierColors[Math.min(3,comboFlashTier)];
