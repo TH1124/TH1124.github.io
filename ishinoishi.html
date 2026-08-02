@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4115378240812746"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>石の意思 -STILL GOT IT-</title>
+<meta name="description" content="無料で遊べるブラウザ用水切りゲーム「石の意思」。石が水面に落ちる瞬間にクリック/タップして跳ねさせ、コンボをつないでどこまで飛ばせるか挑戦しよう。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #game-page{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 14px 30px; }
+  #game-page h1.game-title{
+    font-family:'Press Start 2P', monospace; font-size:clamp(15px,3.2vw,24px);
+    color:#3a5a78; text-shadow:0 0 10px rgba(58,90,120,0.3), 0 3px 0 #fff8;
+    letter-spacing:1px; margin:10px 0 -6px; text-align:center;
+  }
+  #game-page .game-subtitle{ font-family:'Press Start 2P', monospace; font-size:10px; color:var(--sub); }
+  #game-wrap{
+    position:relative; width:100%; max-width:960px; aspect-ratio:16/9;
+    border-radius:14px; overflow:hidden; cursor:pointer;
+    box-shadow:0 0 0 2px #ffb703, 0 0 40px rgba(255,183,3,0.15), 0 20px 50px rgba(0,0,0,0.35);
+    background:#c9e6f2;
+  }
+  #icanvas{ width:100%; height:100%; display:block; }
+  #btn-mute{
+    position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(30,30,40,0.3);background:rgba(255,255,255,0.75);color:#20303f;
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hint2{
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif; font-size:12.5px;
+    color:var(--sub); text-align:center; line-height:1.7; max-width:660px;
+  }
+  .hint2 b{ color:#3a5a78; }
+  .rotate-hint2{
+    display:none; position:fixed; inset:0; background:var(--bg); color:var(--text); z-index:50;
+    flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace; font-size:13px; text-align:center; gap:16px; padding:20px;
+  }
+  @media (max-width:760px) and (orientation:portrait){
+    .rotate-hint2{ display:flex; }
+    #game-page{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rotate-hint2">
+  <div>📱 ⟳</div>
+  <div>端末を横向きにしてください</div>
+  <div style="font-size:9px;color:#9b93b8;">ROTATE YOUR DEVICE</div>
+</div>
+
+<header class="site-header">
+  <a class="site-title" href="index.html">Mr.ONLINE</a>
+  <nav class="site-nav">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </nav>
+</header>
+
+<div id="game-page">
+  <h1 class="game-title">石の意思</h1>
+  <div class="game-subtitle">- STILL GOT IT -</div>
+
+  <div id="game-wrap">
+    <canvas id="icanvas" width="960" height="540"></canvas>
+    <button id="btn-mute" title="音を消す/戻す">🔊</button>
+  </div>
+
+  <div class="hint2">
+    操作は <b>クリック / タップ / Space</b> だけ。石が水面に落ちる瞬間に合わせて押すと跳ねる。<br>
+    コンボが続くほど加速し、1回のバウンドで飛ぶ距離も伸びる。タイミングを外す、早すぎる、サメに食われる…でコンボ終了。
+  </div>
+
+  <div style="max-width:640px;text-align:center;">
+    <p style="font-size:13px;color:var(--sub);line-height:1.9;">
+      「石の意思」は、クビになったサラリーマンが河原で水切りをする話です。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+    </p>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="index.html">ホーム</a>
+    <a href="play.html">遊び方</a>
+    <a href="about.html">このサイトについて</a>
+    <a href="contact.html">お問い合わせ</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+  </div>
+  &copy; <span id="year-i"></span> Mr.ONLINE
+</footer>
+<script>document.getElementById('year-i').textContent = new Date().getFullYear();</script>
+
+<script>
+(function(){
+"use strict";
+
+// ============================================================
+// 基本設定
+// ============================================================
+const canvas = document.getElementById('icanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rr(x,y,w,h,r){
+  if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+const WATER_Y = 400;
+const START_X = 60;
+
+const BASE_BOUNCE_DIST = 18, DIST_PER_COMBO = 2.2, MAX_BOUNCE_DIST = 70;
+const BASE_ARC_MS = 950, ARC_MS_DECREMENT = 14, MIN_ARC_MS = 380;
+const BASE_WINDOW_MS = 260, WINDOW_DECREMENT = 3.5, MIN_WINDOW_MS = 130;
+const ARC_PEAK_BASE = 72;
+
+const SHARK_MIN_DISTANCE = 120;
+const SHARK_COOLDOWN_BOUNCES = 6;
+const SHARK_QTE_BASE_MS = 620;
+
+function bounceDist(combo){ return Math.min(MAX_BOUNCE_DIST, BASE_BOUNCE_DIST + combo*DIST_PER_COMBO); }
+function arcDurationFor(combo){ return Math.max(MIN_ARC_MS, BASE_ARC_MS - combo*ARC_MS_DECREMENT); }
+function windowMsFor(combo){ return Math.max(MIN_WINDOW_MS, BASE_WINDOW_MS - combo*WINDOW_DECREMENT); }
+function peakHeightFor(combo){ return Math.max(28, ARC_PEAK_BASE - combo*0.8); }
+function sharkChanceFor(combo){ return Math.min(0.35, 0.10 + combo*0.003); }
+function sharkWindowFor(combo){ return Math.max(350, SHARK_QTE_BASE_MS - combo*4); }
+
+// ============================================================
+// 距離のたとえ表(結果画面用)
+// ============================================================
+const DISTANCE_COMPARISONS = [
+  {max:25,     text:'お風呂の湯船くらい'},
+  {max:75,     text:'25mプールの往復くらい'},
+  {max:150,    text:'サッカーコート1面ぶんくらい'},
+  {max:350,    text:'東京タワーの高さくらい'},
+  {max:700,    text:'東京ドームの外周ぶんくらい'},
+  {max:1500,   text:'スカイツリーの高さ2つぶんくらい'},
+  {max:5000,   text:'皇居の周りを1周できるくらい'},
+  {max:15000,  text:'東京の山手線を1周できるくらい'},
+  {max:50000,  text:'東京から横浜まで行けるくらい'},
+  {max:150000, text:'東京から静岡あたりまで行けるくらい'},
+  {max:350000, text:'利根川くらい'},
+  {max:Infinity, text:'日本を横断できるくらい'}
+];
+function getDistanceComparison(m){
+  for(const c of DISTANCE_COMPARISONS) if(m<=c.max) return c.text;
+  return DISTANCE_COMPARISONS[DISTANCE_COMPARISONS.length-1].text;
+}
+
+// ============================================================
+// プロローグ / セリフ(仮の内容、後で差し替え予定)
+// ============================================================
+const PROLOGUE_LINES = [
+  '会社を、クビになった。',
+  'スーツのまま、河原にたどり着いた。',
+  '少年の頃、よくここで石を投げていた。',
+  'あの頃みたいに、うまく跳ばせるだろうか。'
+];
+
+// ▼▼ 仮のセリフです。内容は後で差し替え予定 ▼▼
+const MILESTONE_DISTANCES = [50,150,400,800,1500,3000,6000,12000];
+const PLACEHOLDER_COMMENTS = {
+  50:   'お、意外といけるな',
+  150:  'まだまだ跳ぶぞ',
+  400:  '会社にいた時より生き生きしてる気がする',
+  800:  'これは…天職か?',
+  1500: 'クビになってよかったのかもしれない',
+  3000: 'どこまでも跳んでいけそうだ',
+  6000: 'もう戻らなくていいかもしれない',
+  12000:'石よ、これが我々の意志だ'
+};
+
+// ============================================================
+// グローバル状態
+// ============================================================
+let state='TITLE'; // TITLE, PROLOGUE, PLAYING, GAMEOVER
+let prologueIndex=0;
+let combo=0, totalDistance=0, bestDistance=0, bestCombo=0;
+let arc=null;
+let bouncesSinceShark=999;
+let shownMilestones=new Set();
+let speechText='', speechTimer=0;
+let comboFlashTimer=0, comboFlashTier=0;
+let shakeTimer=0, shakeMag=0;
+let pendingGameOver=false, failTimer=0, failReason='';
+let sharkWarnTimer=0;
+let splashParticles=[];
+
+let bgParticles=[];
+for(let i=0;i<20;i++){
+  bgParticles.push({ x:Math.random()*W, y:20+Math.random()*160, vx:0.08+Math.random()*0.15, r:10+Math.random()*18, a:0.3+Math.random()*0.3 });
+}
+
+// ============================================================
+// アーク(石の1バウンド分の軌道)制御
+// ============================================================
+function beginArc(fromX, comboLevel, isShark){
+  const dist = bounceDist(comboLevel);
+  const duration = arcDurationFor(comboLevel);
+  const peak = peakHeightFor(comboLevel);
+  const win = isShark ? sharkWindowFor(comboLevel) : windowMsFor(comboLevel);
+  arc = { startX:fromX, endX:fromX+dist, duration, elapsed:0, peak, windowMs:win, resolved:false, isShark:!!isShark };
+  if(isShark){ bouncesSinceShark=0; sharkWarnTimer=500; } else { bouncesSinceShark++; }
+}
+function stonePos(){
+  if(!arc) return {x:START_X,y:WATER_Y};
+  const t = clamp(arc.elapsed/arc.duration,0,1);
+  const x = arc.startX + (arc.endX-arc.startX)*t;
+  const y = WATER_Y - Math.sin(t*Math.PI)*arc.peak;
+  return {x,y,t};
+}
+function currentDisplayDistance(){
+  if(!arc) return totalDistance;
+  const t = clamp(arc.elapsed/arc.duration,0,1);
+  return totalDistance + (arc.endX-arc.startX)*t;
+}
+function checkMilestones(){
+  for(const m of MILESTONE_DISTANCES){
+    if(totalDistance>=m && !shownMilestones.has(m)){
+      shownMilestones.add(m);
+      showSpeech(PLACEHOLDER_COMMENTS[m] || '');
+      break;
+    }
+  }
+}
+function showSpeech(text){
+  if(!text) return;
+  speechText=text; speechTimer=2600;
+}
+
+function spawnSplash(x,y,n,power){
+  for(let i=0;i<n;i++){
+    const ang = -Math.PI*0.15 - Math.random()*Math.PI*0.7;
+    const spd = (1.5+Math.random()*2.5)*power;
+    splashParticles.push({ x,y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:400+Math.random()*300, maxLife:700, size:2+Math.random()*3 });
+  }
+}
+
+function triggerComboEffects(newCombo){
+  comboFlashTimer=380;
+  comboFlashTier = newCombo>=30?3 : newCombo>=15?2 : newCombo>=5?1 : 0;
+  shakeTimer=180; shakeMag = 3+comboFlashTier*3;
+  if(newCombo%10===0){
+    comboFlashTimer=600; shakeMag=10+comboFlashTier*2;
+  }
+}
+
+function resolveSuccess(){
+  arc.resolved = true;
+  combo++;
+  totalDistance += (arc.endX-arc.startX);
+  checkMilestones();
+  playBounceSound(combo);
+  const pos = stonePos();
+  spawnSplash(pos.x, WATER_Y, 10+Math.min(20,combo), 1+combo*0.03);
+  triggerComboEffects(combo);
+  if(combo%10===0) playComboFanfare();
+  const doShark = (totalDistance>=SHARK_MIN_DISTANCE && bouncesSinceShark>=SHARK_COOLDOWN_BOUNCES && Math.random()<sharkChanceFor(combo));
+  beginArc(arc.endX, combo, doShark);
+}
+
+function attemptBounce(){
+  if(state==='TITLE'){ state='PROLOGUE'; prologueIndex=0; return; }
+  if(state==='PROLOGUE'){
+    prologueIndex++;
+    if(prologueIndex>=PROLOGUE_LINES.length) startRun();
+    return;
+  }
+  if(state==='GAMEOVER'){ startRun(); return; }
+  if(state!=='PLAYING' || !arc || arc.resolved) return;
+
+  const remaining = arc.duration - arc.elapsed;
+  if(remaining <= arc.windowMs){
+    resolveSuccess();
+  } else {
+    triggerGameOver(arc.isShark ? 'shark' : 'early');
+  }
+}
+
+function triggerGameOver(reason){
+  if(pendingGameOver || state!=='PLAYING') return;
+  failReason = reason;
+  pendingGameOver = true;
+  failTimer = reason==='shark' ? 850 : 700;
+  const pos = stonePos();
+  spawnSplash(pos.x, WATER_Y, 22, 1.6);
+  shakeTimer=260; shakeMag = reason==='shark'?16:9;
+  playFailSound(reason);
+  stopBgm();
+}
+
+function startRun(){
+  resumeAudio();
+  combo=0; totalDistance=0;
+  shownMilestones=new Set();
+  splashParticles=[];
+  pendingGameOver=false; failTimer=0;
+  speechText=''; speechTimer=0;
+  comboFlashTimer=0; shakeTimer=0;
+  state='PLAYING';
+  beginArc(START_X, 0, false);
+  startBgm();
+}
+
+// ============================================================
+// 更新
+// ============================================================
+function updateAtmosphere(dt){
+  for(const p of bgParticles){ p.x+=p.vx*dt; if(p.x-p.r>W) p.x=-p.r; }
+}
+function updateSplash(dt){
+  for(const p of splashParticles){
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.12*dt; p.life-=dt*16.6667;
+  }
+  splashParticles = splashParticles.filter(p=>p.life>0);
+}
+
+function update(dt){
+  updateSplash(dt);
+  if(shakeTimer>0) shakeTimer-=dt*16.6667;
+  if(comboFlashTimer>0) comboFlashTimer-=dt*16.6667;
+  if(speechTimer>0) speechTimer-=dt*16.6667;
+  if(sharkWarnTimer>0) sharkWarnTimer-=dt*16.6667;
+
+  if(state==='TITLE' || state==='PROLOGUE'){ updateAtmosphere(dt); return; }
+
+  if(state==='GAMEOVER'){ updateAtmosphere(dt); return; }
+
+  // PLAYING
+  updateAtmosphere(dt);
+  if(pendingGameOver){
+    failTimer -= dt*16.6667;
+    if(failTimer<=0){
+      pendingGameOver=false;
+      bestDistance = Math.max(bestDistance, totalDistance);
+      bestCombo = Math.max(bestCombo, combo);
+      state='GAMEOVER';
+    }
+    return;
+  }
+  if(arc && !arc.resolved){
+    arc.elapsed += dt*16.6667;
+    if(arc.elapsed >= arc.duration){
+      arc.elapsed = arc.duration;
+      triggerGameOver(arc.isShark ? 'shark' : 'miss');
+    }
+  }
+}
+
+// ============================================================
+// 描画
+// ============================================================
+function centerText(text,y,size,color){
+  ctx.font=size+"px 'Press Start 2P', monospace";
+  ctx.fillStyle=color; ctx.textAlign='center';
+  const lines = String(text).split('\n');
+  lines.forEach((ln,i)=> ctx.fillText(ln, W/2, y+i*(size+8)));
+  ctx.textAlign='left';
+}
+function drawSky(){
+  const g=ctx.createLinearGradient(0,0,0,WATER_Y);
+  g.addColorStop(0,'#ffd9a0'); g.addColorStop(0.5,'#ffb08a'); g.addColorStop(1,'#f7dfc0');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,WATER_Y);
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  for(const p of bgParticles){
+    ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.5,0,0,Math.PI*2);
+    ctx.globalAlpha=p.a; ctx.fill(); ctx.globalAlpha=1;
+  }
+  const sun = ctx.createRadialGradient(120,90,0,120,90,90);
+  sun.addColorStop(0,'rgba(255,244,214,0.9)'); sun.addColorStop(1,'rgba(255,244,214,0)');
+  ctx.fillStyle=sun; ctx.beginPath(); ctx.arc(120,90,90,0,Math.PI*2); ctx.fill();
+}
+function drawWater(camX){
+  const g=ctx.createLinearGradient(0,WATER_Y,0,H);
+  g.addColorStop(0,'#4f90b0'); g.addColorStop(1,'#1e4a63');
+  ctx.fillStyle=g; ctx.fillRect(0,WATER_Y,W,H-WATER_Y);
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1;
+  for(let i=0;i<7;i++){
+    const y = WATER_Y+20+i*22;
+    const off = (camX*0.4 + i*40)%80;
+    ctx.beginPath();
+    for(let x=-off; x<W+40; x+=40){ ctx.moveTo(x,y); ctx.lineTo(x+20,y); }
+    ctx.stroke();
+  }
+}
+function drawShoreCharacter(){
+  // 固定HUD位置(左下)に立つサラリーマン
+  const x=70, y=470, s=1;
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(s,s);
+  // 影
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(0,4,26,7,0,0,Math.PI*2); ctx.fill();
+  // 脚
+  ctx.strokeStyle='#2b3a4a'; ctx.lineWidth=8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(-8,-34); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(8,-34); ctx.stroke();
+  // 靴
+  ctx.fillStyle='#14181c';
+  ctx.beginPath(); ctx.ellipse(-9,1,7,4,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(9,1,7,4,0,0,Math.PI*2); ctx.fill();
+  // 上半身(スーツ)
+  ctx.fillStyle='#33455a';
+  rr(-20,-78,40,46,8); ctx.fill();
+  // ネクタイ
+  ctx.fillStyle='#c0392b';
+  ctx.beginPath(); ctx.moveTo(0,-74); ctx.lineTo(-5,-64); ctx.lineTo(0,-46); ctx.lineTo(5,-64); ctx.closePath(); ctx.fill();
+  // シャツ襟
+  ctx.fillStyle='#eef2f5';
+  ctx.beginPath(); ctx.moveTo(-8,-78); ctx.lineTo(0,-68); ctx.lineTo(8,-78); ctx.closePath(); ctx.fill();
+  // 腕
+  ctx.strokeStyle='#33455a'; ctx.lineWidth=9;
+  ctx.beginPath(); ctx.moveTo(-19,-70); ctx.lineTo(-30,-40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(19,-70); ctx.lineTo(30,-40); ctx.stroke();
+  // 頭
+  ctx.fillStyle='#e8c5a0';
+  ctx.beginPath(); ctx.arc(0,-92,15,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2b2118';
+  ctx.beginPath(); ctx.arc(0,-97,15,Math.PI,Math.PI*2); ctx.fill();
+  // 疲れた表情
+  ctx.strokeStyle='#5a4030'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.moveTo(-7,-90); ctx.lineTo(-3,-89); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(7,-90); ctx.lineTo(3,-89); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,-84,3,0.2,Math.PI-0.2); ctx.stroke();
+  ctx.restore();
+}
+function drawSpeechBubble(){
+  if(speechTimer<=0 || !speechText) return;
+  const bx=110, by=380, bw=Math.max(160, speechText.length*13+30), bh=48;
+  ctx.globalAlpha = Math.min(1, speechTimer/2600*3);
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  rr(bx,by-bh,bw,bh,10); ctx.fill();
+  ctx.strokeStyle='#3a5a78'; ctx.lineWidth=2; rr(bx,by-bh,bw,bh,10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx+16,by); ctx.lineTo(bx+30,by); ctx.lineTo(bx+14,by+14); ctx.closePath();
+  ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
+  ctx.font="12px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
+  ctx.fillStyle='#20303f'; ctx.textAlign='left';
+  ctx.fillText(speechText, bx+14, by-bh/2+5);
+  ctx.globalAlpha=1;
+}
+function drawStone(camX){
+  if(!arc) return;
+  const pos = stonePos();
+  const sx = pos.x-camX, sy = pos.y;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(performance.now()/120);
+  ctx.fillStyle='#6b6f76';
+  ctx.beginPath(); ctx.ellipse(0,0,9,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8a8f97';
+  ctx.beginPath(); ctx.ellipse(-2,-2,4,2.4,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // 着水点の目安リング
+  if(!arc.resolved){
+    const ex = arc.endX-camX;
+    const t = clamp(arc.elapsed/arc.duration,0,1);
+    ctx.strokeStyle = arc.isShark ? 'rgba(230,57,70,0.55)' : 'rgba(255,255,255,0.5)';
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(ex,WATER_Y,16-10*t,0,Math.PI*2); ctx.stroke();
+  }
+}
+function drawSharkWarning(camX){
+  if(!(arc && arc.isShark && !arc.resolved)) return;
+  const ex = arc.endX-camX;
+  const t = clamp(arc.elapsed/arc.duration,0,1);
+  if(t<0.35) return;
+  ctx.save();
+  ctx.translate(ex, WATER_Y+6);
+  const bob = Math.sin(performance.now()/90)*3;
+  ctx.fillStyle='#2b3a4a';
+  ctx.beginPath();
+  ctx.moveTo(0,bob); ctx.lineTo(-14,18+bob); ctx.lineTo(14,18+bob); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  if(sharkWarnTimer>0 || t>0.6){
+    ctx.save();
+    ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/70);
+    centerText('よけろ!', WATER_Y-60, 16, '#e63946');
+    ctx.restore();
+  }
+}
+function drawSplashParticles(camX){
+  for(const p of splashParticles){
+    ctx.globalAlpha = Math.max(0,p.life/p.maxLife);
+    ctx.fillStyle='#dff3ff';
+    ctx.fillRect(p.x-camX-p.size/2, p.y-p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha=1;
+}
+function drawHUD(){
+  const d = Math.floor(currentDisplayDistance());
+  ctx.font="14px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(255,255,255,0.8)'; rr(10,10,230,40,8); ctx.fill();
+  ctx.fillStyle='#20303f';
+  ctx.fillText(d+'m', 22, 36);
+  ctx.font="9px 'Press Start 2P', monospace";
+  ctx.fillStyle='rgba(255,255,255,0.75)'; rr(W-170,10,160,30,8); ctx.fill();
+  ctx.fillStyle='#20303f';
+  ctx.fillText('BEST '+Math.floor(bestDistance)+'m', W-160, 30);
+
+  if(combo>0){
+    const tierColors=['#3a5a78','#2a9d5c','#ffb703','#e63946'];
+    const col = tierColors[Math.min(3,comboFlashTier)];
+    ctx.save();
+    const scale = 1 + Math.max(0,comboFlashTimer/380)*0.35;
+    ctx.translate(W/2, 70);
+    ctx.scale(scale,scale);
+    ctx.font="18px 'Press Start 2P', monospace";
+    ctx.fillStyle=col; ctx.textAlign='center';
+    ctx.fillText('COMBO '+combo, 0, 0);
+    ctx.textAlign='left';
+    ctx.restore();
+  }
+}
+function drawTitleScreen(){
+  drawSky(); drawWater(0); drawShoreCharacter();
+  ctx.fillStyle='rgba(20,20,30,0.25)'; ctx.fillRect(0,0,W,H);
+  centerText('石の意思', H*0.28, 26, '#fff');
+  centerText('- STILL GOT IT -', H*0.28+30, 10, '#ffe9c9');
+  ctx.save();
+  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP / CLICK', H*0.58, 11, '#fff');
+  ctx.restore();
+  centerText('落ちる瞬間に合わせてクリック。コンボをつなげ', H*0.7, 10, '#ffe9c9');
+  if(bestDistance>0) centerText('自己ベスト '+Math.floor(bestDistance)+'m / '+bestCombo+'コンボ', H*0.78, 9, '#ffe9c9');
+}
+function drawProlgoueScreen(){
+  drawSky(); drawWater(0); drawShoreCharacter();
+  ctx.fillStyle='rgba(20,20,30,0.35)'; ctx.fillRect(0,0,W,H);
+  const line = PROLOGUE_LINES[prologueIndex] || '';
+  centerText(line, H*0.62, 14, '#fff');
+  ctx.save();
+  ctx.globalAlpha=0.5+0.5*Math.sin(performance.now()/300);
+  centerText('▼', H*0.62+34, 12, '#ffe9c9');
+  ctx.restore();
+}
+function drawGameOverScreen(){
+  drawSky(); drawWater(0);
+  ctx.fillStyle='rgba(15,20,30,0.55)'; ctx.fillRect(0,0,W,H);
+  const reasonMap = {
+    miss:'タイミングを外して沈んだ…',
+    early:'焦って早く押しすぎた…',
+    shark:'サメに驚いて石を落とした…'
+  };
+  centerText('GAME OVER', H*0.2, 22, '#fff');
+  centerText(reasonMap[failReason]||'コンボが途切れた…', H*0.2+28, 10, '#ffe9c9');
+
+  centerText('COMBO '+combo, H*0.2+64, 16, '#ffb703');
+  centerText('飛距離 '+Math.floor(totalDistance)+'m', H*0.2+92, 16, '#fff');
+  centerText('だいたい '+getDistanceComparison(totalDistance), H*0.2+118, 10, '#ffe9c9');
+
+  if(totalDistance>=bestDistance && totalDistance>0){
+    centerText('自己ベスト更新!', H*0.2+142, 10, '#2a9d5c');
+  }
+  ctx.save();
+  ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/300);
+  centerText('press ENTER / SPACE / TAP でもう一度', H*0.86, 10, '#fff');
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='TITLE'){ drawTitleScreen(); return; }
+  if(state==='PROLOGUE'){ drawProlgoueScreen(); return; }
+  if(state==='GAMEOVER'){ drawGameOverScreen(); return; }
+
+  const stone = stonePos();
+  let camX = clamp(stone.x - 300, 0, Infinity);
+
+  ctx.save();
+  if(shakeTimer>0){
+    const m = shakeMag*(shakeTimer/260);
+    ctx.translate((Math.random()-0.5)*m, (Math.random()-0.5)*m);
+  }
+  drawSky();
+  drawWater(camX);
+  drawSplashParticles(camX);
+  drawStone(camX);
+  drawSharkWarning(camX);
+  if(comboFlashTimer>0){
+    const tierColors=['rgba(58,90,120,0.12)','rgba(42,157,92,0.14)','rgba(255,183,3,0.16)','rgba(230,57,70,0.18)'];
+    ctx.fillStyle = tierColors[Math.min(3,comboFlashTier)];
+    ctx.fillRect(0,0,W,H);
+  }
+  drawShoreCharacter();
+  drawSpeechBubble();
+  drawHUD();
+  ctx.restore();
+}
+
+// ============================================================
+// オーディオエンジン
+// ============================================================
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, muted=false;
+function ensureAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:1;
+  musicGain=audioCtx.createGain(); musicGain.gain.value=0.32;
+  sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.6;
+  musicGain.connect(masterGain); sfxGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+}
+function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+
+const NOTE = {
+  C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
+  C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88, C5:523.25, D5:587.33, E5:659.25
+};
+function playNoteAt(freq,time,dur,type,vol,dest){
+  if(!audioCtx) return;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,time);
+  gain.gain.setValueAtTime(0,time);
+  gain.gain.linearRampToValueAtTime(vol,time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+  osc.connect(gain); gain.connect(dest);
+  osc.start(time); osc.stop(time+dur+0.05);
+}
+function playNoiseBurst(duration,vol,fStart,fEnd,dest){
+  if(!audioCtx) return;
+  const bufferSize=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(); src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='bandpass';
+  const t0=audioCtx.currentTime;
+  filter.frequency.setValueAtTime(fStart,t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(50,fEnd), t0+duration);
+  const gain=audioCtx.createGain();
+  gain.gain.setValueAtTime(vol,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+duration);
+  src.connect(filter); filter.connect(gain); gain.connect(dest);
+  src.start(t0); src.stop(t0+duration+0.02);
+}
+
+const BGM_BPM = 96;
+const BGM_BASS = ['A3',0,0,0,'F3',0,0,0,'C3',0,0,0,'G3',0,0,0];
+const BGM_LEAD = [0,0,'C4',0,'E4',0,0,'D4',0,0,'C4',0,'A3',0,0,0];
+let bgmStep=0, bgmNextTime=0, bgmTimer=null, bgmPlaying=false;
+function bgmStepSeconds(){ return 60.0/BGM_BPM/2; }
+function bgmTick(){
+  while(bgmNextTime < audioCtx.currentTime+0.12){
+    const b=BGM_BASS[bgmStep];
+    if(b) playNoteAt(NOTE[b], bgmNextTime, bgmStepSeconds()*3.6, 'triangle', 0.13, musicGain);
+    const l=BGM_LEAD[bgmStep];
+    if(l) playNoteAt(NOTE[l], bgmNextTime, bgmStepSeconds()*1.6, 'sine', 0.1, musicGain);
+    bgmNextTime += bgmStepSeconds();
+    bgmStep=(bgmStep+1)%BGM_BASS.length;
+  }
+}
+function startBgm(){
+  resumeAudio(); if(!audioCtx || bgmPlaying) return;
+  bgmPlaying=true; bgmStep=0; bgmNextTime=audioCtx.currentTime+0.05;
+  bgmTimer=setInterval(bgmTick, 30);
+}
+function stopBgm(){
+  bgmPlaying=false;
+  if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; }
+}
+
+function playBounceSound(comboN){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const freq = 420*(1+Math.min(0.9,comboN*0.02));
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='square'; osc.frequency.setValueAtTime(freq,t0); osc.frequency.exponentialRampToValueAtTime(freq*1.5,t0+0.06);
+  gain.gain.setValueAtTime(0.18,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.1);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.12);
+  playNoiseBurst(0.08,0.1,2200,700,sfxGain);
+}
+function playComboFanfare(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  [523,659,784,1047].forEach((f,i)=>{
+    const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+    osc.type='square'; osc.frequency.setValueAtTime(f,t0+i*0.07);
+    gain.gain.setValueAtTime(0.001,t0+i*0.07); gain.gain.linearRampToValueAtTime(0.22,t0+i*0.07+0.02); gain.gain.exponentialRampToValueAtTime(0.001,t0+i*0.07+0.2);
+    osc.connect(gain); gain.connect(sfxGain);
+    osc.start(t0+i*0.07); osc.stop(t0+i*0.07+0.22);
+  });
+}
+function playFailSound(reason){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.35,0.28,1200,100,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(reason==='shark'?260:180,t0); osc.frequency.exponentialRampToValueAtTime(50,t0+0.4);
+  gain.gain.setValueAtTime(0.25,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.42);
+  osc.connect(gain); gain.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+0.44);
+}
+
+const btnMute=document.getElementById('btn-mute');
+btnMute.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  ensureAudio();
+  muted=!muted;
+  if(masterGain) masterGain.gain.value = muted?0:1;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// 入力
+// ============================================================
+window.addEventListener('keydown',(e)=>{
+  if(['Enter','Space'].includes(e.code)){ attemptBounce(); e.preventDefault(); }
+});
+canvas.addEventListener('pointerdown', (e)=>{
+  attemptBounce();
+});
+
+// ============================================================
+// ループ
+// ============================================================
+let lastTime=null;
+function loop(ts){
+  if(lastTime===null) lastTime=ts;
+  let deltaMs=ts-lastTime; lastTime=ts;
+  if(deltaMs>100) deltaMs=100;
+  const dt=deltaMs/16.6667;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
