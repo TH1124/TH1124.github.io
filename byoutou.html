@@ -51,6 +51,10 @@
     font-family:'Press Start 2P', monospace; color:#ff1a1a; font-size:clamp(32px,9vw,64px);
     text-shadow:0 0 24px #ff0000, 0 0 60px #b30000; opacity:0; letter-spacing:4px;
   }
+  #jumpscare-overlay{
+    position:absolute; inset:0; display:none; z-index:11; background:#000;
+  }
+  #jumpscare-img{ width:100%; height:100%; object-fit:cover; display:block; }
   #center-overlay{
     position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; background:rgba(3,5,4,0.72); color:#fff; gap:14px; padding:20px; pointer-events:auto;
@@ -145,6 +149,9 @@
       <div id="nightmare-overlay">
         <div id="nightmare-text"></div>
       </div>
+      <div id="jumpscare-overlay">
+        <img id="jumpscare-img" src="mitsuketa.png" alt="">
+      </div>
       <div id="center-overlay">
         <h2 id="co-title">病棟徘徊</h2>
         <p id="co-text">廃病院に取り残された。4枚のカルテを集めて、出口を見つけ出せ。<br>何かに見つかったら、それで終わりだ。</p>
@@ -214,6 +221,7 @@ const NIGHTMARE_FADE_MS = 1400;
 const NIGHTMARE_TEXT_MS = 2600;
 const NIGHTMARE_CHASE_SPEED = 9.5;
 const NIGHTMARE_CHASE_MAX_MS = 5000;
+const JUMPSCARE_DURATION_MS = 3800;
 
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -960,12 +968,47 @@ function updateNightmareChase(dt){
     nightmareEnemyMesh.group.rotation.y = ang;
   }
 }
+let jumpscareTimer=0;
+const jumpscareOverlay = document.getElementById('jumpscare-overlay');
+const TITLE_INTRO_TEXT = '廃病院に取り残された。4枚のカルテを集めて、出口を見つけ出せ。<br>何かに見つかったら、それで終わりだ。';
+
 function onNightmareCaught(){
   if(gState!=='NIGHTMARE_CHASE') return;
-  gState='CAUGHT';
-  caughtTimer=900;
+  gState='NIGHTMARE_JUMPSCARE';
+  jumpscareTimer=0;
   nightmareCaughtFlag=true;
-  playCaughtSound();
+  stopAmbient();
+  stopMusicBox();
+  stopEndgameBgm();
+  exitPointerLock();
+  showJumpscare();
+}
+function showJumpscare(){
+  jumpscareOverlay.style.display='block';
+  crosshair.style.display='none';
+  hudTop.style.display='none';
+  msgToast.style.opacity='0';
+  playJumpscareRumble();
+  setTimeout(speakMitsuketa, 250);
+}
+function speakMitsuketa(){
+  playJumpscareRumble2();
+  if(!window.speechSynthesis) return;
+  try{
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance('みぃつけた');
+    utter.lang = 'ja-JP';
+    utter.pitch = 0.1;
+    utter.rate = 0.65;
+    utter.volume = muted ? 0 : 1;
+    speechSynthesis.speak(utter);
+  } catch(e){}
+}
+function forceReturnToTitle(){
+  jumpscareOverlay.style.display='none';
+  setupLevel();
+  gState='TITLE';
+  showOverlay('病棟徘徊', TITLE_INTRO_TEXT, 'クリック / タップして開始');
 }
 
 function formatTime(ms){
@@ -992,10 +1035,7 @@ function onWin(){
 function onGameOver(){
   gState='GAMEOVER';
   playLoseJingle();
-  const text = nightmareCaughtFlag
-    ? '血に染まった廊下の先で、追いつかれた。<br>もう、逃げられなかった。'
-    : '暗闇の中、何かに捕まった。';
-  showOverlay('GAME OVER', text, 'press ENTER / SPACE / TAP でもう一度');
+  showOverlay('GAME OVER', '暗闇の中、何かに捕まった。', 'press ENTER / SPACE / TAP でもう一度');
   exitPointerLock();
 }
 function exitPointerLock(){
@@ -1023,6 +1063,8 @@ function startGame(){
   nightmareCaughtFlag=false;
   nightmareEntity=null; nightmareEnemyMesh=null;
   nightmareTimer=0; nightmareSubPhase='';
+  jumpscareTimer=0;
+  jumpscareOverlay.style.display='none';
   runStartTime=performance.now();
   heartbeatActive=true;
   scheduleHeartbeat();
@@ -1067,6 +1109,9 @@ function loop(ts){
     nightmareTimer += deltaMs;
     const d = nightmareEntity ? Math.hypot(player.x-nightmareEntity.x, player.z-nightmareEntity.z) : 0;
     if(d < CATCH_RADIUS || nightmareTimer>=NIGHTMARE_CHASE_MAX_MS){ onNightmareCaught(); }
+  } else if(gState==='NIGHTMARE_JUMPSCARE'){
+    jumpscareTimer += deltaMs;
+    if(jumpscareTimer >= JUMPSCARE_DURATION_MS){ forceReturnToTitle(); }
   } else if(gState==='CAUGHT'){
     caughtTimer -= deltaMs;
     if(caughtTimer<=0){ onGameOver(); }
@@ -1301,6 +1346,25 @@ function playNightmareChaseAmbience(){
   g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.16,t0+0.05); g.gain.setValueAtTime(0.16,t0+3.0); g.gain.exponentialRampToValueAtTime(0.001,t0+3.4);
   osc.connect(g); g.connect(sfxGain);
   osc.start(t0); osc.stop(t0+3.45);
+}
+function playJumpscareRumble(){
+  ensureAudio(); if(!audioCtx) return;
+  playNoiseBurst(0.6,0.35,2500,50,sfxGain);
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(90,t0); osc.frequency.exponentialRampToValueAtTime(28,t0+2.2);
+  g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.32,t0+0.08); g.gain.setValueAtTime(0.28,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.4);
+  osc.connect(g); g.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+2.45);
+}
+function playJumpscareRumble2(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.setValueAtTime(45,t0);
+  g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.22,t0+0.1); g.gain.exponentialRampToValueAtTime(0.001,t0+1.4);
+  osc.connect(g); g.connect(sfxGain);
+  osc.start(t0); osc.stop(t0+1.45);
 }
 function playLoseJingle(){
   ensureAudio(); if(!audioCtx) return;
