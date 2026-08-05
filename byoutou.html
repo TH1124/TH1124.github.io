@@ -846,13 +846,25 @@ function onCaught(){
   stopMusicBox();
   stopEndgameBgm();
 }
+function formatTime(ms){
+  const totalSec = Math.max(0, Math.floor(ms/1000));
+  const min = Math.floor(totalSec/60);
+  const sec = totalSec%60;
+  return min+'分'+String(sec).padStart(2,'0')+'秒';
+}
+let runStartTime=0, bestClearTimeMs=null;
+
 function onWin(){
   gState='WIN';
   stopAmbient();
   stopMusicBox();
   stopEndgameBgm();
   playWinJingle();
-  showOverlay('生還', '出口を抜け、病棟の外に出た。<br>もう二度と、ここには戻らない。', 'press ENTER / SPACE / TAP でもう一度');
+  const elapsedMs = performance.now()-runStartTime;
+  let updated=false;
+  if(bestClearTimeMs===null || elapsedMs<bestClearTimeMs){ bestClearTimeMs=elapsedMs; updated=true; }
+  const bestLine = '自己ベスト: '+formatTime(bestClearTimeMs)+(updated?'(更新!)':'');
+  showOverlay('生還', '出口を抜け、病棟の外に出た。<br>もう二度と、ここには戻らない。<br><br>クリアタイム: '+formatTime(elapsedMs)+'<br>'+bestLine, 'press ENTER / SPACE / TAP でもう一度');
   exitPointerLock();
 }
 function onGameOver(){
@@ -882,6 +894,7 @@ function startGame(){
   hideOverlay();
   startAmbient();
   wasHunting=false;
+  runStartTime=performance.now();
   heartbeatActive=true;
   scheduleHeartbeat();
 }
