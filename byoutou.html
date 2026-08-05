@@ -991,15 +991,52 @@ function showJumpscare(){
   playJumpscareRumble();
   setTimeout(speakMitsuketa, 250);
 }
+function pickDeepJaVoice(){
+  if(!window.speechSynthesis) return null;
+  const voices = speechSynthesis.getVoices() || [];
+  const jaVoices = voices.filter(v=>v.lang && v.lang.toLowerCase().startsWith('ja'));
+  if(jaVoices.length===0) return null;
+  // 名前に男性的・低めを示唆するキーワードが含まれる声を優先(対応状況はブラウザ依存)
+  const maleHints = /male|otoya|ichiro|daichi|takeshi|男性/i;
+  const femaleHints = /female|kyoko|haruka|sayaka|女性/i;
+  const male = jaVoices.find(v=>maleHints.test(v.name));
+  if(male) return male;
+  const nonFemale = jaVoices.find(v=>!femaleHints.test(v.name));
+  return nonFemale || jaVoices[0];
+}
+function playGutturalGrowl(){
+  ensureAudio(); if(!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const notes = [40,34,42,29,24]; // 「みぃ・つ・け・た」の音節に合わせて揺らす唸り
+  const segDur = 0.44;
+  notes.forEach((f,i)=>{
+    const start = t0 + i*segDur*0.82;
+    const osc = audioCtx.createOscillator();
+    const filt = audioCtx.createBiquadFilter();
+    const g = audioCtx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(f*1.15, start);
+    osc.frequency.exponentialRampToValueAtTime(f, start+segDur*0.5);
+    filt.type='lowpass'; filt.frequency.setValueAtTime(220,start);
+    g.gain.setValueAtTime(0.001,start);
+    g.gain.linearRampToValueAtTime(0.24, start+0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, start+segDur);
+    osc.connect(filt); filt.connect(g); g.connect(sfxGain);
+    osc.start(start); osc.stop(start+segDur+0.05);
+  });
+}
 function speakMitsuketa(){
   playJumpscareRumble2();
+  playGutturalGrowl();
   if(!window.speechSynthesis) return;
   try{
     speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance('みぃつけた');
     utter.lang = 'ja-JP';
-    utter.pitch = 0.1;
-    utter.rate = 0.65;
+    const deepVoice = pickDeepJaVoice();
+    if(deepVoice) utter.voice = deepVoice;
+    utter.pitch = 0.02;
+    utter.rate = 0.45;
     utter.volume = muted ? 0 : 1;
     speechSynthesis.speak(utter);
   } catch(e){}
@@ -1170,6 +1207,7 @@ function ensureAudio(){
   musicGain.connect(masterGain); sfxGain.connect(masterGain);
   masterGain.connect(audioCtx.destination);
   loadEndgameBgm();
+  if(window.speechSynthesis) speechSynthesis.getVoices(); // 声リストの読み込みを早めにトリガー
 }
 function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
 
@@ -1360,11 +1398,13 @@ function playJumpscareRumble(){
 function playJumpscareRumble2(){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
-  const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
-  osc.type='sine'; osc.frequency.setValueAtTime(45,t0);
-  g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.22,t0+0.1); g.gain.exponentialRampToValueAtTime(0.001,t0+1.4);
-  osc.connect(g); g.connect(sfxGain);
-  osc.start(t0); osc.stop(t0+1.45);
+  [36,39].forEach((f)=>{
+    const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.setValueAtTime(f,t0);
+    g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.26,t0+0.12); g.gain.setValueAtTime(0.22,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.6);
+    osc.connect(g); g.connect(sfxGain);
+    osc.start(t0); osc.stop(t0+2.65);
+  });
 }
 function playLoseJingle(){
   ensureAudio(); if(!audioCtx) return;
