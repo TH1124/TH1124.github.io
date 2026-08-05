@@ -539,7 +539,7 @@ scene.add(camera);
 
 let sceneGroup = new THREE_NS.Group();
 scene.add(sceneGroup);
-let itemMeshes=[], enemyGroup=null, exitMesh=null;
+let itemMeshes=[], enemyGroup=null, enemyHeadGroup=null, exitMesh=null;
 
 function clearGroup(g){
   while(g.children.length){
@@ -613,19 +613,52 @@ function rebuildScene(){
   sceneGroup.add(exitMesh);
   sceneGroup.add(exitLight);
 
-  // 敵(単純図形の人型シルエット)
+  // 敵(顔を強調した不気味なシルエット)
   enemyGroup = new THREE_NS.Group();
-  const darkMat = new THREE_NS.MeshStandardMaterial({ color:0x0c0d0b, roughness:1 });
-  const body = new THREE_NS.Mesh(new THREE_NS.CylinderGeometry(0.32,0.4,1.5,10), darkMat);
-  body.position.y = 0.95;
+  const darkMat = new THREE_NS.MeshStandardMaterial({ color:0x080907, roughness:1 });
+  const body = new THREE_NS.Mesh(new THREE_NS.CylinderGeometry(0.3,0.4,1.4,10), darkMat);
+  body.position.y = 0.9;
   enemyGroup.add(body);
-  const head = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.28,10,10), darkMat);
-  head.position.y = 1.85;
-  enemyGroup.add(head);
-  const eyeMat = new THREE_NS.MeshBasicMaterial({ color:0xff5c4d });
-  const eyeGeo = new THREE_NS.SphereGeometry(0.045,6,6);
-  const eyeL = new THREE_NS.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.1,1.88,0.24); enemyGroup.add(eyeL);
-  const eyeR = new THREE_NS.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.1,1.88,0.24); enemyGroup.add(eyeR);
+
+  const headGroup = new THREE_NS.Group();
+  headGroup.position.y = 1.82;
+  enemyGroup.add(headGroup);
+  enemyHeadGroup = headGroup;
+
+  // 青白く発光する、ぼやけた顔
+  const faceMat = new THREE_NS.MeshStandardMaterial({ color:0xd7ddc9, emissive:0xaab29a, emissiveIntensity:0.6, roughness:0.7 });
+  const face = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.36,14,12), faceMat);
+  headGroup.add(face);
+  const haloMat = new THREE_NS.MeshBasicMaterial({ color:0xdfe4d0, transparent:true, opacity:0.16 });
+  const halo = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.5,12,10), haloMat);
+  headGroup.add(halo);
+  const faceLight = new THREE_NS.PointLight(0xdfe4d0, 0.5, 3.2);
+  headGroup.add(faceLight);
+
+  // 不自然に大きく離れた、落ちくぼんだ目
+  const socketMat = new THREE_NS.MeshStandardMaterial({ color:0x17160f, roughness:1 });
+  const pupilMat = new THREE_NS.MeshBasicMaterial({ color:0x040403 });
+  const glintMat = new THREE_NS.MeshBasicMaterial({ color:0xff5c4d });
+  [-1,1].forEach((side)=>{
+    const socket = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.115,10,10), socketMat);
+    socket.position.set(side*0.185, 0.02, 0.29);
+    socket.scale.set(1,1,0.6);
+    headGroup.add(socket);
+    const pupil = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.06,8,8), pupilMat);
+    pupil.position.set(side*0.185, 0.02, 0.35);
+    headGroup.add(pupil);
+    const glint = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.018,6,6), glintMat);
+    glint.position.set(side*0.185, 0.02, 0.39);
+    headGroup.add(glint);
+  });
+
+  // ぽっかりと開いた、大きな口
+  const mouthMat = new THREE_NS.MeshBasicMaterial({ color:0x030302 });
+  const mouth = new THREE_NS.Mesh(new THREE_NS.SphereGeometry(0.17,12,10), mouthMat);
+  mouth.position.set(0,-0.19,0.28);
+  mouth.scale.set(1.5,0.7,0.55);
+  headGroup.add(mouth);
+
   enemyGroup.position.set(entity.x, 0, entity.z);
   sceneGroup.add(enemyGroup);
 
@@ -763,10 +796,12 @@ function onCaught(){
   caughtTimer=900;
   playCaughtSound();
   stopAmbient();
+  stopMusicBox();
 }
 function onWin(){
   gState='WIN';
   stopAmbient();
+  stopMusicBox();
   playWinJingle();
   showOverlay('生還', '出口を抜け、病棟の外に出た。<br>もう二度と、ここには戻らない。', 'press ENTER / SPACE / TAP でもう一度');
   exitPointerLock();
@@ -796,6 +831,7 @@ function startGame(){
   gState='PLAYING';
   hideOverlay();
   startAmbient();
+  wasHunting=false;
   heartbeatActive=true;
   scheduleHeartbeat();
 }
@@ -811,6 +847,7 @@ document.addEventListener('keydown',(e)=>{
 // メインループ
 // ============================================================
 let lastTime=null;
+let wasHunting=false;
 function loop(ts){
   if(lastTime===null) lastTime=ts;
   let deltaMs = ts-lastTime; lastTime=ts;
@@ -824,6 +861,10 @@ function loop(ts){
     hudStatus.textContent = (entity && entity.state==='hunting') ? '……気配がする' : '';
     if(toastTimer>0){ msgToast.style.opacity='1'; msgToast.textContent=toastMsg; }
     else { msgToast.style.opacity='0'; }
+    const isHunting = entity && entity.state==='hunting';
+    if(isHunting && !wasHunting){ startMusicBox(); }
+    else if(!isHunting && wasHunting){ stopMusicBox(); }
+    wasHunting = isHunting;
   } else if(gState==='CAUGHT'){
     caughtTimer -= deltaMs;
     if(caughtTimer<=0){ onGameOver(); }
@@ -837,6 +878,12 @@ function loop(ts){
     enemyGroup.position.set(entity.x, 0, entity.z);
     const ang = Math.atan2(player.x-entity.x, player.z-entity.z);
     enemyGroup.rotation.y = ang;
+  }
+  if(enemyHeadGroup){
+    const t = performance.now()/1000;
+    enemyHeadGroup.position.x = Math.sin(t*11)*0.012 + Math.sin(t*3.3)*0.02;
+    enemyHeadGroup.position.z = Math.cos(t*9)*0.012;
+    enemyHeadGroup.rotation.z = Math.sin(t*5)*0.03;
   }
   for(const im of itemMeshes){
     im.mesh.visible = !im.data.collected;
@@ -904,7 +951,7 @@ function playNoteAt(freq,time,dur,type,vol,dest){
   osc.connect(gain); gain.connect(dest);
   osc.start(time); osc.stop(time+dur+0.05);
 }
-const NOTE = { C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, C4:261.63, E4:329.63, G4:392.00, C5:523.25 };
+const NOTE = { C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, C4:261.63, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88, C5:523.25 };
 
 let droneOsc1=null, droneOsc2=null, dronePlaying=false;
 function startAmbient(){
@@ -920,6 +967,43 @@ function startAmbient(){
 function stopAmbient(){
   if(!dronePlaying) return; dronePlaying=false;
   try{ droneOsc1.stop(); droneOsc2.stop(); }catch(e){}
+}
+
+// --- 追跡状態(hunting)専用のオルゴール風BGM ---
+const MUSICBOX_BPM = 78;
+const MUSICBOX_MELODY = ['A4',0,'C5',0,'B4',0,'G4',0,'A4',0,0,'E4','F4',0,'E4',0];
+let mbStep=0, mbNextTime=0, mbTimer=null, mbPlaying=false;
+function mbStepSeconds(){ return 60.0/MUSICBOX_BPM/2; }
+function playBellNote(freq,time,vol,dest){
+  if(!audioCtx) return;
+  const osc1=audioCtx.createOscillator(); const g1=audioCtx.createGain();
+  osc1.type='sine'; osc1.frequency.setValueAtTime(freq,time);
+  g1.gain.setValueAtTime(0,time); g1.gain.linearRampToValueAtTime(vol,time+0.008); g1.gain.exponentialRampToValueAtTime(0.001,time+1.1);
+  osc1.connect(g1); g1.connect(dest);
+  osc1.start(time); osc1.stop(time+1.15);
+
+  const osc2=audioCtx.createOscillator(); const g2=audioCtx.createGain();
+  osc2.type='sine'; osc2.frequency.setValueAtTime(freq*2.76,time);
+  g2.gain.setValueAtTime(0,time); g2.gain.linearRampToValueAtTime(vol*0.22,time+0.005); g2.gain.exponentialRampToValueAtTime(0.001,time+0.5);
+  osc2.connect(g2); g2.connect(dest);
+  osc2.start(time); osc2.stop(time+0.55);
+}
+function mbTick(){
+  while(mbNextTime < audioCtx.currentTime+0.12){
+    const n = MUSICBOX_MELODY[mbStep];
+    if(n) playBellNote(NOTE[n], mbNextTime, 0.15, musicGain);
+    mbNextTime += mbStepSeconds();
+    mbStep=(mbStep+1)%MUSICBOX_MELODY.length;
+  }
+}
+function startMusicBox(){
+  resumeAudio(); if(!audioCtx || mbPlaying) return;
+  mbPlaying=true; mbStep=0; mbNextTime=audioCtx.currentTime+0.05;
+  mbTimer=setInterval(mbTick, 30);
+}
+function stopMusicBox(){
+  mbPlaying=false;
+  if(mbTimer){ clearInterval(mbTimer); mbTimer=null; }
 }
 
 let heartbeatActive=false;
