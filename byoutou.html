@@ -5,8 +5,8 @@
      crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>終末病棟 -FIND THE WAY OUT-</title>
-<meta name="description" content="無料で遊べるブラウザ用一人称3Dホラーゲーム「終末病棟」。廃病院を探索してカルテを集め、何かに見つからないよう出口を目指せ。">
+<title>病棟徘徊 -FIND THE WAY OUT-</title>
+<meta name="description" content="無料で遊べるブラウザ用一人称3Dホラーゲーム「病棟徘徊」。廃病院を探索してカルテを集め、何かに見つからないよう出口を目指せ。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -57,6 +57,18 @@
     border:1px solid rgba(255,255,255,0.3);background:rgba(6,10,8,0.6);color:#fff;
     font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:8;
     -webkit-tap-highlight-color:transparent; pointer-events:auto;
+  }
+  #btn-fullscreen{
+    position:absolute;top:10px;right:52px;width:34px;height:34px;border-radius:8px;
+    border:1px solid rgba(255,255,255,0.3);background:rgba(6,10,8,0.6);color:#fff;
+    font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:8;
+    -webkit-tap-highlight-color:transparent; pointer-events:auto;
+  }
+  #game-wrap:fullscreen{
+    max-width:none; width:100vw; height:100vh; aspect-ratio:auto; border-radius:0; box-shadow:none;
+  }
+  #game-wrap:-webkit-full-screen{
+    max-width:none; width:100vw; height:100vh; aspect-ratio:auto; border-radius:0; box-shadow:none;
   }
   #touch-controls{ position:absolute; inset:0; display:none; pointer-events:none; }
   #tc-joy-base{
@@ -110,7 +122,7 @@
 </header>
 
 <div id="game-page">
-  <h1 class="game-title">終末病棟</h1>
+  <h1 class="game-title">病棟徘徊</h1>
   <div class="game-subtitle">- FIND THE WAY OUT -</div>
 
   <div id="game-wrap">
@@ -123,12 +135,13 @@
       </div>
       <div id="msg-toast"></div>
       <div id="center-overlay">
-        <h2 id="co-title">終末病棟</h2>
+        <h2 id="co-title">病棟徘徊</h2>
         <p id="co-text">廃病院に取り残された。4枚のカルテを集めて、出口を見つけ出せ。<br>何かに見つかったら、それで終わりだ。</p>
         <div class="blink" id="co-blink">クリック / タップして開始</div>
       </div>
     </div>
     <button id="btn-mute" title="音を消す/戻す">🔊</button>
+    <button id="btn-fullscreen" title="全画面表示">⛶</button>
     <div id="touch-controls">
       <div id="tc-joy-base"><div id="tc-joy-knob"></div></div>
       <div id="tc-look"></div>
@@ -138,12 +151,12 @@
 
   <div class="hint2">
     移動 <b>WASD</b>&nbsp;&nbsp;視点 <b>マウス</b>(クリックで視点ロック)&nbsp;&nbsp;走る <b>Shift</b>(足音が大きくなり見つかりやすくなる)<br>
-    カルテに近づくと自動で拾う。スマホは左の丸で移動、右側をドラッグで視点操作。
+    カルテに近づくと自動で拾う。スマホは左の丸で移動、右側をドラッグで視点操作。画面右上の<b>⛶</b>ボタンで全画面表示にもできる。
   </div>
 
   <div style="max-width:640px;text-align:center;">
     <p style="font-size:13px;color:var(--sub);line-height:1.9;">
-      「終末病棟」は一人称視点の3D探索ホラーです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
+      「病棟徘徊」は一人称視点の3D探索ホラーです。他の作品は<a href="index.html">ゲーム一覧</a>からどうぞ。
     </p>
   </div>
 </div>
@@ -969,6 +982,29 @@ btnMute.addEventListener('click', (e)=>{
   if(masterGain) masterGain.gain.value = muted?0:1;
   btnMute.textContent = muted ? '🔇' : '🔊';
 });
+
+const btnFullscreen = document.getElementById('btn-fullscreen');
+const gameWrapEl = document.getElementById('game-wrap');
+const canFullscreen = !!(gameWrapEl.requestFullscreen || gameWrapEl.webkitRequestFullscreen || gameWrapEl.msRequestFullscreen);
+if(!canFullscreen){ btnFullscreen.style.display='none'; }
+btnFullscreen.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if(!fsEl){
+    const req = gameWrapEl.requestFullscreen || gameWrapEl.webkitRequestFullscreen || gameWrapEl.msRequestFullscreen;
+    if(req) req.call(gameWrapEl);
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if(exit) exit.call(document);
+  }
+});
+function onFullscreenChange(){
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  btnFullscreen.textContent = isFs ? '⤢' : '⛶';
+  setTimeout(resizeRenderer, 60);
+}
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
 })();
 </script>
