@@ -209,11 +209,11 @@ const LOSE_GRACE_MS = 4200;
 const PATH_RECOMPUTE_MS = 450;
 const ENEMY_SPEED = 2.6;
 const ENEMY_WANDER_SPEED = 1.1;
-const NIGHTMARE_DEADLINE_MS = 180000; // 4枚目取得から3分
+const NIGHTMARE_DEADLINE_MS = 90000; // 4枚目取得から1分30秒
 const NIGHTMARE_FADE_MS = 1400;
 const NIGHTMARE_TEXT_MS = 2600;
-const NIGHTMARE_CHASE_SPEED = 12;
-const NIGHTMARE_CHASE_MAX_MS = 4200;
+const NIGHTMARE_CHASE_SPEED = 9.5;
+const NIGHTMARE_CHASE_MAX_MS = 5000;
 
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -940,8 +940,8 @@ function beginNightmareChase(){
   scene.fog = null;
 
   const behindX = Math.sin(player.yaw), behindZ = Math.cos(player.yaw);
-  const nx = player.x + behindX*4.5;
-  const nz = player.z + behindZ*4.5;
+  const nx = player.x + behindX*6.0;
+  const nz = player.z + behindZ*6.0;
   nightmareEntity = { x:nx, z:nz };
   nightmareEnemyMesh = createEnemyMesh(nightmareEntity);
   nightmareEnemyMesh.group.scale.set(1.35,1.35,1.35);
