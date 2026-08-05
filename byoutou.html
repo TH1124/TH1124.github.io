@@ -48,8 +48,9 @@
     align-items:center; justify-content:center; pointer-events:none; z-index:9;
   }
   #nightmare-text{
-    font-family:'Press Start 2P', monospace; color:#ff1a1a; font-size:clamp(32px,9vw,64px);
-    text-shadow:0 0 24px #ff0000, 0 0 60px #b30000; opacity:0; letter-spacing:4px;
+    font-family:'Press Start 2P', monospace; color:#ff1a1a; font-size:clamp(16px,4.6vw,30px);
+    text-shadow:0 0 24px #ff0000, 0 0 60px #b30000; opacity:0; letter-spacing:2px;
+    text-align:center; line-height:1.8; max-width:88%; padding:0 16px;
   }
   #jumpscare-overlay{
     position:absolute; inset:0; display:none; z-index:11; background:#000;
@@ -920,7 +921,7 @@ function updateNightmareFade(deltaMs){
     nightmareOverlay.style.opacity = String(a);
     if(nightmareTimer>=NIGHTMARE_FADE_MS){
       nightmareSubPhase='text';
-      nightmareTextEl.textContent='逃げろ';
+      nightmareTextEl.textContent='あなたは間に合いませんでした';
     }
   } else if(nightmareSubPhase==='text'){
     const tSinceText = nightmareTimer-NIGHTMARE_FADE_MS;
@@ -980,6 +981,7 @@ function onNightmareCaught(){
   stopAmbient();
   stopMusicBox();
   stopEndgameBgm();
+  stopChaseAmbience();
   exitPointerLock();
   showJumpscare();
 }
@@ -1019,7 +1021,7 @@ function playGutturalGrowl(){
     osc.frequency.exponentialRampToValueAtTime(f, start+segDur*0.5);
     filt.type='lowpass'; filt.frequency.setValueAtTime(220,start);
     g.gain.setValueAtTime(0.001,start);
-    g.gain.linearRampToValueAtTime(0.24, start+0.04);
+    g.gain.linearRampToValueAtTime(0.17, start+0.04);
     g.gain.exponentialRampToValueAtTime(0.001, start+segDur);
     osc.connect(filt); filt.connect(g); g.connect(sfxGain);
     osc.start(start); osc.stop(start+segDur+0.05);
@@ -1376,6 +1378,7 @@ function playNightmareStinger(){
   osc.connect(g); g.connect(sfxGain);
   osc.start(t0); osc.stop(t0+1.35);
 }
+let chaseAmbienceOsc=null, chaseAmbienceGain=null;
 function playNightmareChaseAmbience(){
   ensureAudio(); if(!audioCtx) return;
   const t0=audioCtx.currentTime;
@@ -1384,6 +1387,22 @@ function playNightmareChaseAmbience(){
   g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.16,t0+0.05); g.gain.setValueAtTime(0.16,t0+3.0); g.gain.exponentialRampToValueAtTime(0.001,t0+3.4);
   osc.connect(g); g.connect(sfxGain);
   osc.start(t0); osc.stop(t0+3.45);
+  chaseAmbienceOsc=osc; chaseAmbienceGain=g;
+}
+function stopChaseAmbience(){
+  if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  if(chaseAmbienceGain){
+    try{
+      chaseAmbienceGain.gain.cancelScheduledValues(t0);
+      chaseAmbienceGain.gain.setValueAtTime(chaseAmbienceGain.gain.value, t0);
+      chaseAmbienceGain.gain.exponentialRampToValueAtTime(0.001, t0+0.08);
+    } catch(e){}
+  }
+  if(chaseAmbienceOsc){
+    try{ chaseAmbienceOsc.stop(t0+0.1); }catch(e){}
+  }
+  chaseAmbienceOsc=null; chaseAmbienceGain=null;
 }
 function playJumpscareRumble(){
   ensureAudio(); if(!audioCtx) return;
@@ -1391,7 +1410,7 @@ function playJumpscareRumble(){
   const t0=audioCtx.currentTime;
   const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
   osc.type='sawtooth'; osc.frequency.setValueAtTime(90,t0); osc.frequency.exponentialRampToValueAtTime(28,t0+2.2);
-  g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.32,t0+0.08); g.gain.setValueAtTime(0.28,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.4);
+  g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.24,t0+0.08); g.gain.setValueAtTime(0.16,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.4);
   osc.connect(g); g.connect(sfxGain);
   osc.start(t0); osc.stop(t0+2.45);
 }
@@ -1401,7 +1420,7 @@ function playJumpscareRumble2(){
   [36,39].forEach((f)=>{
     const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
     osc.type='sawtooth'; osc.frequency.setValueAtTime(f,t0);
-    g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.26,t0+0.12); g.gain.setValueAtTime(0.22,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.6);
+    g.gain.setValueAtTime(0.001,t0); g.gain.linearRampToValueAtTime(0.17,t0+0.12); g.gain.setValueAtTime(0.14,t0+1.6); g.gain.exponentialRampToValueAtTime(0.001,t0+2.6);
     osc.connect(g); g.connect(sfxGain);
     osc.start(t0); osc.stop(t0+2.65);
   });
