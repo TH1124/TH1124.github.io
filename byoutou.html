@@ -367,10 +367,15 @@ let player = { x:0, z:0, yaw:0, pitch:0 };
 let itemsData=[]; // {x,z,collected}
 let exitPos={x:0,z:0};
 let itemsCollected=0;
-let entity = null; // {x,z,state,path,pathTimer,wanderTimer,loseTimer,lastKnownX,lastKnownZ,spawnX,spawnZ}
+let entities = []; // 各要素: {x,z,state,path,pathTimer,wanderTimer,loseTimer,lastKnownX,lastKnownZ,spawnX,spawnZ}
+let endgameTriggered=false, endgamePhase=false;
 let isRunning=false;
 let caughtTimer=0;
 let toastTimer=0, toastMsg='';
+
+function makeEntity(x,z){
+  return { x, z, spawnX:x, spawnZ:z, state:'patrol', path:[], pathTimer:0, wanderTimer:0, loseTimer:0, lastKnownX:x, lastKnownZ:z };
+}
 
 function setupLevel(){
   maze = buildMaze(CELLS_X, CELLS_Z);
@@ -406,14 +411,41 @@ function setupLevel(){
   itemsCollected = 0;
 
   const mp = cellCenter(monsterCell[0], monsterCell[1]);
-  entity = {
-    x:mp.x, z:mp.z, spawnX:mp.x, spawnZ:mp.z,
-    state:'patrol', path:[], pathTimer:0, wanderTimer:0, loseTimer:0,
-    lastKnownX:mp.x, lastKnownZ:mp.z
-  };
+  entities = [ makeEntity(mp.x, mp.z) ];
+  endgameTriggered=false; endgamePhase=false;
 
   caughtTimer=0; toastTimer=0;
   rebuildScene();
+}
+
+function triggerEndgame(){
+  if(endgameTriggered) return;
+  endgameTriggered = true;
+  endgamePhase = true;
+  const dist = bfsDistances(maze,0,0);
+  let maxD=0;
+  for(let z=0;z<CELLS_Z;z++) for(let x=0;x<CELLS_X;x++){ if(dist[z][x]>maxD) maxD=dist[z][x]; }
+  const playerCell = cellOf(player.x, player.z);
+  const usedCells = new Set(entities.map(e=>{ const c=cellOf(e.x,e.z); return c.x+','+c.z; }));
+  for(let i=0;i<2;i++){
+    const cands=[];
+    for(let z=0;z<CELLS_Z;z++) for(let x=0;x<CELLS_X;x++){
+      const key=x+','+z;
+      if(usedCells.has(key)) continue;
+      const distFromPlayer = Math.hypot(x-playerCell.x, z-playerCell.z);
+      if(dist[z][x]>=maxD*0.3 && distFromPlayer>=3) cands.push([x,z]);
+    }
+    const cell = cands.length ? pick(cands) : [Math.floor(Math.random()*CELLS_X), Math.floor(Math.random()*CELLS_Z)];
+    usedCells.add(cell[0]+','+cell[1]);
+    const p = cellCenter(cell[0], cell[1]);
+    const newEnt = makeEntity(p.x, p.z);
+    entities.push(newEnt);
+    spawnEnemyMesh(newEnt);
+  }
+  stopAmbient();
+  stopMusicBox();
+  playEndgameBgm();
+  toast('……気配が増えた');
 }
 
 function toast(msg){ toastMsg=msg; toastTimer=1800; }
@@ -429,46 +461,46 @@ function moveAlongPath(ent,dt,speed){
   ent.z += (dz/d)*speed*dt;
 }
 
-function updateEntityAI(dt){
+function updateEntityAI(ent,dt){
   const dtMs = dt*1000;
-  const ec = cellOf(entity.x, entity.z);
-  const dx = player.x-entity.x, dz = player.z-entity.z;
+  const ec = cellOf(ent.x, ent.z);
+  const dx = player.x-ent.x, dz = player.z-ent.z;
   const d2p = Math.hypot(dx,dz);
   const radius = isRunning ? DETECT_RADIUS_RUN : DETECT_RADIUS_WALK;
 
   let detected=false;
-  if(d2p<radius && hasLineOfSight(entity.x,entity.z,player.x,player.z,walls)) detected=true;
+  if(d2p<radius && hasLineOfSight(ent.x,ent.z,player.x,player.z,walls)) detected=true;
 
   if(detected){
-    entity.state='hunting';
-    entity.loseTimer=LOSE_GRACE_MS;
-    entity.lastKnownX=player.x; entity.lastKnownZ=player.z;
-  } else if(entity.state==='hunting'){
-    entity.loseTimer -= dtMs;
-    if(entity.loseTimer<=0){ entity.state='patrol'; entity.path=[]; }
+    ent.state='hunting';
+    ent.loseTimer=LOSE_GRACE_MS;
+    ent.lastKnownX=player.x; ent.lastKnownZ=player.z;
+  } else if(ent.state==='hunting'){
+    ent.loseTimer -= dtMs;
+    if(ent.loseTimer<=0){ ent.state='patrol'; ent.path=[]; }
   }
 
-  if(entity.state==='hunting'){
-    entity.pathTimer -= dtMs;
-    if(entity.pathTimer<=0){
-      const tc = cellOf(entity.lastKnownX, entity.lastKnownZ);
-      entity.path = bfsPath(maze, ec.x, ec.z, tc.x, tc.z);
-      entity.pathTimer = PATH_RECOMPUTE_MS;
+  if(ent.state==='hunting'){
+    ent.pathTimer -= dtMs;
+    if(ent.pathTimer<=0){
+      const tc = cellOf(ent.lastKnownX, ent.lastKnownZ);
+      ent.path = bfsPath(maze, ec.x, ec.z, tc.x, tc.z);
+      ent.pathTimer = PATH_RECOMPUTE_MS;
     }
-    moveAlongPath(entity, dt, ENEMY_SPEED);
+    moveAlongPath(ent, dt, ENEMY_SPEED);
   } else {
-    entity.wanderTimer -= dtMs;
-    if(entity.wanderTimer<=0 || entity.path.length===0){
+    ent.wanderTimer -= dtMs;
+    if(ent.wanderTimer<=0 || ent.path.length===0){
       const c = maze[ec.z][ec.x];
       const nbs=[];
       if(c.n) nbs.push([ec.x,ec.z-1]);
       if(c.s) nbs.push([ec.x,ec.z+1]);
       if(c.e) nbs.push([ec.x+1,ec.z]);
       if(c.w) nbs.push([ec.x-1,ec.z]);
-      if(nbs.length) entity.path=[pick(nbs)];
-      entity.wanderTimer = 2200+Math.random()*1600;
+      if(nbs.length) ent.path=[pick(nbs)];
+      ent.wanderTimer = 2200+Math.random()*1600;
     }
-    moveAlongPath(entity, dt, ENEMY_WANDER_SPEED);
+    moveAlongPath(ent, dt, ENEMY_WANDER_SPEED);
   }
 }
 
@@ -478,6 +510,7 @@ function updateItemsAndExit(){
     if(Math.hypot(player.x-it.x, player.z-it.z) < PICKUP_RADIUS){
       it.collected=true; itemsCollected++;
       onItemCollected();
+      if(itemsCollected===ITEM_COUNT){ triggerEndgame(); }
     }
   }
   if(Math.hypot(player.x-exitPos.x, player.z-exitPos.z) < 2.4){
@@ -491,11 +524,13 @@ function updateItemsAndExit(){
 
 function updateGameLogic(dt){
   if(gState!=='PLAYING') return;
-  updateEntityAI(dt);
+  for(const ent of entities){ updateEntityAI(ent, dt); }
   updateItemsAndExit();
   if(toastTimer>0) toastTimer -= dt*1000;
-  const d = Math.hypot(player.x-entity.x, player.z-entity.z);
-  if(d < CATCH_RADIUS){ onCaught(); }
+  for(const ent of entities){
+    const d = Math.hypot(player.x-ent.x, player.z-ent.z);
+    if(d < CATCH_RADIUS){ onCaught(); break; }
+  }
 }
 
 // ============================================================
@@ -539,16 +574,20 @@ scene.add(camera);
 
 let sceneGroup = new THREE_NS.Group();
 scene.add(sceneGroup);
-let itemMeshes=[], enemyGroup=null, enemyHeadGroup=null, exitMesh=null;
+let itemMeshes=[], enemyMeshes=[], exitMesh=null;
 
+function disposeObject(o){
+  if(o.geometry) o.geometry.dispose();
+  if(o.material){
+    if(Array.isArray(o.material)) o.material.forEach(m=>m.dispose());
+    else o.material.dispose();
+  }
+}
 function clearGroup(g){
   while(g.children.length){
     const c = g.children.pop();
-    if(c.geometry) c.geometry.dispose();
-    if(c.material){
-      if(Array.isArray(c.material)) c.material.forEach(m=>m.dispose());
-      else c.material.dispose();
-    }
+    if(c.children && c.children.length) clearGroup(c);
+    disposeObject(c);
   }
 }
 
@@ -613,17 +652,24 @@ function rebuildScene(){
   sceneGroup.add(exitMesh);
   sceneGroup.add(exitLight);
 
-  // 敵(顔を強調した不気味なシルエット)
-  enemyGroup = new THREE_NS.Group();
+  // 敵(顔を強調した不気味なシルエット。複数体ぶん生成)
+  enemyMeshes = [];
+  for(const ent of entities){ spawnEnemyMesh(ent); }
+
+  camera.position.set(player.x, EYE_HEIGHT, player.z);
+  resizeRenderer();
+}
+
+function createEnemyMesh(ent){
+  const group = new THREE_NS.Group();
   const darkMat = new THREE_NS.MeshStandardMaterial({ color:0x080907, roughness:1 });
   const body = new THREE_NS.Mesh(new THREE_NS.CylinderGeometry(0.3,0.4,1.4,10), darkMat);
   body.position.y = 0.9;
-  enemyGroup.add(body);
+  group.add(body);
 
   const headGroup = new THREE_NS.Group();
   headGroup.position.y = 1.82;
-  enemyGroup.add(headGroup);
-  enemyHeadGroup = headGroup;
+  group.add(headGroup);
 
   // 青白く発光する、ぼやけた顔
   const faceMat = new THREE_NS.MeshStandardMaterial({ color:0xd7ddc9, emissive:0xaab29a, emissiveIntensity:0.6, roughness:0.7 });
@@ -659,11 +705,12 @@ function rebuildScene(){
   mouth.scale.set(1.5,0.7,0.55);
   headGroup.add(mouth);
 
-  enemyGroup.position.set(entity.x, 0, entity.z);
-  sceneGroup.add(enemyGroup);
-
-  camera.position.set(player.x, EYE_HEIGHT, player.z);
-  resizeRenderer();
+  group.position.set(ent.x, 0, ent.z);
+  sceneGroup.add(group);
+  return { group, headGroup };
+}
+function spawnEnemyMesh(ent){
+  enemyMeshes.push(createEnemyMesh(ent));
 }
 
 // ============================================================
@@ -797,11 +844,13 @@ function onCaught(){
   playCaughtSound();
   stopAmbient();
   stopMusicBox();
+  stopEndgameBgm();
 }
 function onWin(){
   gState='WIN';
   stopAmbient();
   stopMusicBox();
+  stopEndgameBgm();
   playWinJingle();
   showOverlay('生還', '出口を抜け、病棟の外に出た。<br>もう二度と、ここには戻らない。', 'press ENTER / SPACE / TAP でもう一度');
   exitPointerLock();
@@ -827,6 +876,7 @@ function hideOverlay(){
 
 function startGame(){
   resumeAudio();
+  stopEndgameBgm();
   setupLevel();
   gState='PLAYING';
   hideOverlay();
@@ -858,12 +908,14 @@ function loop(ts){
     updatePlayerMovement(dt);
     updateGameLogic(dt);
     hudItems.textContent = 'カルテ '+itemsCollected+'/'+ITEM_COUNT;
-    hudStatus.textContent = (entity && entity.state==='hunting') ? '……気配がする' : '';
+    const isHunting = entities.some(e=>e.state==='hunting');
+    hudStatus.textContent = isHunting ? '……気配がする' : '';
     if(toastTimer>0){ msgToast.style.opacity='1'; msgToast.textContent=toastMsg; }
     else { msgToast.style.opacity='0'; }
-    const isHunting = entity && entity.state==='hunting';
-    if(isHunting && !wasHunting){ startMusicBox(); }
-    else if(!isHunting && wasHunting){ stopMusicBox(); }
+    if(!endgamePhase){
+      if(isHunting && !wasHunting){ startMusicBox(); }
+      else if(!isHunting && wasHunting){ stopMusicBox(); }
+    }
     wasHunting = isHunting;
   } else if(gState==='CAUGHT'){
     caughtTimer -= deltaMs;
@@ -874,16 +926,17 @@ function loop(ts){
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
 
-  if(enemyGroup && entity){
-    enemyGroup.position.set(entity.x, 0, entity.z);
-    const ang = Math.atan2(player.x-entity.x, player.z-entity.z);
-    enemyGroup.rotation.y = ang;
-  }
-  if(enemyHeadGroup){
-    const t = performance.now()/1000;
-    enemyHeadGroup.position.x = Math.sin(t*11)*0.012 + Math.sin(t*3.3)*0.02;
-    enemyHeadGroup.position.z = Math.cos(t*9)*0.012;
-    enemyHeadGroup.rotation.z = Math.sin(t*5)*0.03;
+  for(let i=0;i<entities.length;i++){
+    const ent = entities[i];
+    const em = enemyMeshes[i];
+    if(!em) continue;
+    em.group.position.set(ent.x, 0, ent.z);
+    const ang = Math.atan2(player.x-ent.x, player.z-ent.z);
+    em.group.rotation.y = ang;
+    const t = performance.now()/1000 + i*13.7;
+    em.headGroup.position.x = Math.sin(t*11)*0.012 + Math.sin(t*3.3)*0.02;
+    em.headGroup.position.z = Math.cos(t*9)*0.012;
+    em.headGroup.rotation.z = Math.sin(t*5)*0.03;
   }
   for(const im of itemMeshes){
     im.mesh.visible = !im.data.collected;
@@ -921,8 +974,38 @@ function ensureAudio(){
   sfxGain=audioCtx.createGain(); sfxGain.gain.value=0.55;
   musicGain.connect(masterGain); sfxGain.connect(masterGain);
   masterGain.connect(audioCtx.destination);
+  loadEndgameBgm();
 }
 function resumeAudio(){ ensureAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+
+let endgameBgmBuffer=null, endgameBgmSource=null, endgameBgmLoadStarted=false, endgameBgmRetries=0;
+async function loadEndgameBgm(){
+  if(endgameBgmLoadStarted || !audioCtx) return;
+  endgameBgmLoadStarted = true;
+  try{
+    const res = await fetch('broken-nursery.mp3');
+    const buf = await res.arrayBuffer();
+    endgameBgmBuffer = await audioCtx.decodeAudioData(buf);
+  } catch(e){ /* 読み込めなければ無音のままフォールバック */ }
+}
+function playEndgameBgm(){
+  ensureAudio(); if(!audioCtx) return;
+  if(endgameBgmSource) return;
+  if(!endgameBgmBuffer){
+    if(endgameBgmRetries<25){ endgameBgmRetries++; setTimeout(playEndgameBgm,200); }
+    return;
+  }
+  endgameBgmSource = audioCtx.createBufferSource();
+  endgameBgmSource.buffer = endgameBgmBuffer;
+  endgameBgmSource.loop = true;
+  endgameBgmSource.connect(musicGain);
+  endgameBgmSource.start(0);
+}
+function stopEndgameBgm(){
+  if(!endgameBgmSource) return;
+  try{ endgameBgmSource.stop(); }catch(e){}
+  endgameBgmSource=null;
+}
 
 function playNoiseBurst(duration,vol,fStart,fEnd,dest){
   if(!audioCtx) return;
@@ -1020,9 +1103,11 @@ function playHeartThump(vol){
 function scheduleHeartbeat(){
   if(!heartbeatActive) return;
   let danger=0;
-  if(entity && entity.state==='hunting'){
-    const d=Math.hypot(player.x-entity.x, player.z-entity.z);
-    danger=clamp(1-d/16,0,1);
+  for(const ent of entities){
+    if(ent.state==='hunting'){
+      const d=Math.hypot(player.x-ent.x, player.z-ent.z);
+      danger=Math.max(danger, clamp(1-d/16,0,1));
+    }
   }
   const interval = 950-danger*580;
   if(danger>0.1) playHeartThump(0.08+danger*0.26);
