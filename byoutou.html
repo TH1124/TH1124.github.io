@@ -880,6 +880,9 @@ const coBlink = document.getElementById('co-blink');
 const hudTop = document.getElementById('hud-top');
 const hudItems = document.getElementById('hud-items');
 const hudStatus = document.getElementById('hud-status');
+coOverlay.addEventListener('click', ()=>{
+  if(gState==='TITLE' || gState==='GAMEOVER' || gState==='WIN'){ startGame(); }
+});
 const crosshair = document.getElementById('crosshair');
 const msgToast = document.getElementById('msg-toast');
 
